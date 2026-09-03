@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* Kustomisasi scrollbar halus khusus tampilan data-dense ala desktop */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617; /* Warna latar belakang gelap khas slate-950 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b; /* Warna thumb slate-800 */
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155; /* Warna hover slate-700 */
+}
+
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  button, 
+  form, 
+  a,
+  .no-print {
+    display: none !important;
+  }
+
+  div, section {
+    background-color: transparent !important;
+    border-color: #cbd5e1 !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  table th, table td {
+    color: black !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+}
