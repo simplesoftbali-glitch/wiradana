@@ -187,7 +187,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       {/* Konten Utama Halaman Proyek / Detail RAB */}
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <Link href="/" className="text-sm text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1.5 transition">
+          <Link href="/projects" className="text-sm text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1.5 transition">
             &larr; Kembali ke Daftar Proyek
           </Link>
           <button

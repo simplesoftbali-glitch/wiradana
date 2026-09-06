@@ -1,243 +1,177 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase' // Ubah dari './lib/supabase' menjadi '../lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-// HAPUS baris ini agar tidak mengimpor Sidebar secara manual di halaman utama:
-// import Sidebar from '../components/Sidebar'
 
 interface Project {
   id: string
   name: string
-  description: string
   start_date: string
   end_date: string
 }
 
-export default function Home() {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(false)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+export default function DashboardHome() {
   const router = useRouter()
-
-  async function checkUserAndFetchProjects() {
-    const { data: { session } } = await supabase.auth.getSession()
-    
-    if (!session) {
-      router.push('/login')
-      return
-    }
-
-    setUserEmail(session.user.email || null)
-
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Gagal memuat data:', error.message)
-    } else {
-      setProjects(data || [])
-    }
-  }
+  const [projectsCount, setProjectsCount] = useState(0)
+  const [recentProjects, setRecentProjects] = useState<Project[]>([])
+  const [totalRabGlobal, setTotalRabGlobal] = useState(0)
+  const [totalActualGlobal, setTotalActualGlobal] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    checkUserAndFetchProjects()
+    async function fetchDashboardData() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      // 1. Ambil jumlah total proyek
+      const { data: projData } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (projData) {
+        setProjectsCount(projData.length)
+        setRecentProjects(projData.slice(0, 5))
+      }
+
+      // 2. Hitung total RAB dan Aktual global dengan tipe eksplisit
+      const { data: rabData } = await supabase.from('rab_items').select('total_cost')
+      const { data: expData } = await supabase.from('actual_expenses').select('amount')
+
+      const rabSum = rabData?.reduce((acc: number, curr: { total_cost: number | null }) => acc + (curr.total_cost || 0), 0) || 0
+      const expSum = expData?.reduce((acc: number, curr: { amount: number | null }) => acc + (curr.amount || 0), 0) || 0
+
+      setTotalRabGlobal(rabSum)
+      setTotalActualGlobal(expSum)
+      setLoading(false)
+    }
+
+    fetchDashboardData()
   }, [router])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name) return alert('Nama proyek wajib diisi!')
-
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      router.push('/login')
-      return
-    }
-
-    setLoading(true)
-    const { error } = await supabase.from('projects').insert([
-      {
-        name: name,
-        description: description,
-        start_date: startDate || null,
-        end_date: endDate || null,
-        user_id: session.user.id
-      }
-    ])
-
-    setLoading(false)
-
-    if (error) {
-      alert('Gagal menyimpan: ' + error.message)
-    } else {
-      setName('')
-      setDescription('')
-      setStartDate('')
-      setEndDate('')
-      checkUserAndFetchProjects()
-    }
-  }
-
-  async function handleDeleteProject(projectId: string, e: React.MouseEvent) {
-    e.stopPropagation()
-    if (!confirm('Yakin ingin menghapus proyek ini beserta seluruh data RAB di dalamnya?')) return
-
-    const { error } = await supabase.from('projects').delete().eq('id', projectId)
-
-    if (error) {
-      alert('Gagal menghapus proyek: ' + error.message)
-    } else {
-      checkUserAndFetchProjects()
-    }
-  }
+  const globalVariance = totalRabGlobal - totalActualGlobal
 
   return (
-    /* Hapus tag flex min-h-screen di sini karena sudah ditangani oleh layout.tsx */
     <div className="w-full">
-      {/* 
-        HAPUS baris pemanggilan Sidebar di sini:
-        <Sidebar userEmail={userEmail} /> 
-      */}
-
-      {/* Konten Utama Dashboard */}
-      <div className="max-w-4xl mx-auto">
+      <main className="max-w-5xl mx-auto">
         
         {/* Header Dashboard */}
-        <header className="mb-8 border-b border-slate-800 pb-6">
-          <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
-            <span className="bg-emerald-500 w-3 h-3 rounded-full inline-block"></span>
-            WiraDana Dashboard
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">Sistem Manajemen Proyek dan Estimasi RAB Terintegrasi</p>
+        <header className="mb-8 border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              <span className="bg-emerald-500 w-3 h-3 rounded-full inline-block"></span>
+              WiraDana Dashboard
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">Ringkasan kesehatan finansial dan portofolio proyek secara real-time.</p>
+          </div>
+          <Link
+            href="/projects"
+            className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-950/50"
+          >
+            + Kelola / Buat Proyek
+          </Link>
         </header>
 
-        {/* Grid Layout: Form & Daftar Proyek */}
-        <div className="grid grid-cols-1 gap-8">
-          
-          {/* Formulir Input Proyek */}
-          <section className="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-6 shadow-xl">
-            <h2 className="text-lg font-semibold mb-4 text-emerald-400 flex items-center gap-2">
-              <span>+</span> Buat Proyek Baru
-            </h2>
+        {loading ? (
+          <div className="text-center py-20 text-slate-500 font-mono text-xs">Memuat ringkasan dashboard...</div>
+        ) : (
+          <div className="space-y-8">
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Nama Proyek</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Contoh: Instalasi Smart Home"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Deskripsi</label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Contoh: Proyek otomatisasi perangkat Bali"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Tanggal Mulai</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Tanggal Selesai</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
-                  />
-                </div>
+            {/* Kartu Statistik Utama (KPI Cards) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-slate-900/80 backdrop-blur border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <span className="text-xs text-slate-400 block uppercase tracking-wider mb-2">Total Proyek Aktif</span>
+                <span className="text-3xl font-extrabold text-white font-mono">{projectsCount}</span>
+                <span className="text-[11px] text-slate-500 block mt-2">Portofolio dalam pengawasan</span>
+              </div>
+              
+              <div className="bg-slate-900/80 backdrop-blur border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <span className="text-xs text-slate-400 block uppercase tracking-wider mb-2">Akumulasi RAB Global</span>
+                <span className="text-2xl font-extrabold text-emerald-400 font-mono">
+                  Rp {totalRabGlobal.toLocaleString('id-ID')}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-2">Total rencana anggaran</span>
               </div>
 
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-slate-950 font-bold px-6 py-2.5 rounded-lg text-sm transition shadow-lg shadow-emerald-950/50 cursor-pointer disabled:opacity-50"
-                >
-                  {loading ? 'Menyimpan...' : 'Simpan Proyek'}
-                </button>
+              <div className={`bg-slate-900/80 backdrop-blur border p-6 rounded-2xl shadow-xl ${globalVariance >= 0 ? 'border-slate-800' : 'border-red-500/50 bg-red-950/10'}`}>
+                <span className="text-xs text-slate-400 block uppercase tracking-wider mb-2">Status Anggaran Makro</span>
+                <span className={`text-2xl font-extrabold font-mono ${globalVariance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  Rp {Math.abs(globalVariance).toLocaleString('id-ID')}
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase inline-block mt-2 ${globalVariance >= 0 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800'}`}>
+                  {globalVariance >= 0 ? 'Keseluruhan Aman (Sisa)' : 'Defisit Global (Overbudget)'}
+                </span>
               </div>
-            </form>
-          </section>
+            </div>
 
-          {/* Daftar Proyek Aktif */}
-          <section className="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-6 shadow-xl">
-            <h2 className="text-lg font-semibold mb-4 text-slate-200">Daftar Proyek Aktif</h2>
-            
-            {projects.length === 0 ? (
-              <div className="text-center py-16 px-6 border border-dashed border-slate-800 rounded-2xl bg-slate-950/40">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 text-xl font-mono">
-                  📁
+            {/* Bagian Proyek Terbaru & Pintasan Cepat */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              
+              {/* Daftar Proyek Terbaru (2 Kolom) */}
+              <div className="md:col-span-2 bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl">
+                <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                  <h2 className="text-base font-semibold text-slate-200">Proyek Terbaru</h2>
+                  <Link href="/projects" className="text-xs text-emerald-400 hover:text-emerald-300 underline font-medium">
+                    Lihat Semua &rarr;
+                  </Link>
                 </div>
-                <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Proyek</h3>
-                <p className="text-slate-500 text-xs max-w-sm mx-auto">
-                  Mulai buat proyek pertama Anda menggunakan formulir di atas untuk mengelola RAB dan pengeluaran secara terstruktur.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
-                      <th className="py-3 px-4">Nama Proyek</th>
-                      <th className="py-3 px-4">Deskripsi</th>
-                      <th className="py-3 px-4">Mulai</th>
-                      <th className="py-3 px-4">Selesai</th>
-                      <th className="py-3 px-4 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {projects.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-800/40 transition group">
-                        <td className="py-4 px-4 font-medium">
-                          <Link href={`/projects/${p.id}`} className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5">
-                            {p.name}
-                            <span className="text-xs opacity-0 group-hover:opacity-100 transition">&rarr;</span>
-                          </Link>
-                        </td>
-                        <td className="py-4 px-4 text-slate-300 text-sm">{p.description || '-'}</td>
-                        <td className="py-4 px-4 text-slate-400 text-sm font-mono">{p.start_date || '-'}</td>
-                        <td className="py-4 px-4 text-slate-400 text-sm font-mono">{p.end_date || '-'}</td>
-                        <td className="py-4 px-4 text-center">
-                          <button
-                            onClick={(e) => handleDeleteProject(p.id, e)}
-                            className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
-                          >
-                            Hapus
-                          </button>
-                        </td>
-                      </tr>
+
+                {recentProjects.length === 0 ? (
+                  <div className="text-center py-10 text-slate-500 text-xs">
+                    Belum ada proyek. Silakan buat melalui menu Proyek & RAB.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentProjects.map((p) => (
+                      <Link 
+                        key={p.id} 
+                        href={`/projects/${p.id}`}
+                        className="block bg-slate-950/50 hover:bg-slate-800/50 border border-slate-800/60 p-4 rounded-xl transition group"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-bold text-white group-hover:text-emerald-400 transition">{p.name}</span>
+                          <span className="text-xs text-slate-500 font-mono">&rarr;</span>
+                        </div>
+                        <div className="flex gap-4 text-[11px] text-slate-400 font-mono mt-1">
+                          <span>Mulai: {p.start_date || '-'}</span>
+                          <span>Selesai: {p.end_date || '-'}</span>
+                        </div>
+                      </Link>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                )}
               </div>
-            )}
-          </section>
 
-        </div>
-      </div>
+              {/* Panel Pintasan Cepat (1 Kolom) */}
+              <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl space-y-4">
+                <h2 className="text-base font-semibold text-slate-200 border-b border-slate-800 pb-3">Pintasan Menu</h2>
+                
+                <div className="space-y-2.5">
+                  <Link href="/projects" className="block p-3 rounded-xl bg-slate-950/60 hover:bg-emerald-950/30 border border-slate-800 hover:border-emerald-800/50 transition text-xs font-medium text-slate-200">
+                    📂 <strong className="text-white ml-1">Proyek & RAB</strong>
+                    <span className="block text-[11px] text-slate-500 mt-0.5">Buat proyek baru & atur rincian RAB</span>
+                  </Link>
+                  <Link href="/bva" className="block p-3 rounded-xl bg-slate-950/60 hover:bg-emerald-950/30 border border-slate-800 hover:border-emerald-800/50 transition text-xs font-medium text-slate-200">
+                    📊 <strong className="text-white ml-1">Kalkulator / BVA</strong>
+                    <span className="block text-[11px] text-slate-500 mt-0.5">Analisis selisih anggaran riil</span>
+                  </Link>
+                  <Link href="/reports" className="block p-3 rounded-xl bg-slate-950/60 hover:bg-emerald-950/30 border border-slate-800 hover:border-emerald-800/50 transition text-xs font-medium text-slate-200">
+                    📈 <strong className="text-white ml-1">Laporan & Cash Flow</strong>
+                    <span className="block text-[11px] text-slate-500 mt-0.5">Rekapitulasi keuangan makro</span>
+                  </Link>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+      </main>
     </div>
   )
 }
