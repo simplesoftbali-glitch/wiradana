@@ -2,10 +2,8 @@
 
 import { useState, useEffect, use } from 'react'
 import { supabase } from '../../../lib/supabase'
-import Link from 'next/link'
+import Link from 'next/link' // BENAR: Mengimpor Link dari next/link
 import { useRouter } from 'next/navigation'
-// HAPUS baris import Sidebar ini karena sudah ditangani oleh layout.tsx:
-// import Sidebar from '../../../components/Sidebar'
 
 interface Project {
   id: string
@@ -45,6 +43,28 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [loadingExpense, setLoadingExpense] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
+  // State untuk Mode Edit Proyek
+  const [isEditingProject, setIsEditingProject] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editStartDate, setEditStartDate] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
+
+  // State untuk Mode Edit RAB Item
+  const [editingRabId, setEditingRabId] = useState<string | null>(null)
+  const [editRabName, setEditRabName] = useState('')
+  const [editRabCategory, setEditRabCategory] = useState('')
+  const [editRabUnit, setEditRabUnit] = useState('')
+  const [editRabQty, setEditRabQty] = useState('')
+  const [editRabPrice, setEditRabPrice] = useState('')
+
+  // State untuk Mode Edit Pengeluaran Aktual
+  const [editingExpId, setEditingExpId] = useState<string | null>(null)
+  const [editExpDate, setEditExpDate] = useState('')
+  const [editExpName, setEditExpName] = useState('')
+  const [editExpCategory, setEditExpCategory] = useState('')
+  const [editExpAmount, setEditExpAmount] = useState('')
+
   // Form State untuk RAB Item baru
   const [name, setName] = useState('')
   const [unit, setUnit] = useState('')
@@ -79,7 +99,12 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       router.push('/')
       return
     }
+    
     setProject(projData)
+    setEditName(projData.name)
+    setEditDescription(projData.description || '')
+    setEditStartDate(projData.start_date || '')
+    setEditEndDate(projData.end_date || '')
 
     // Ambil Data RAB
     const { data: rabData } = await supabase
@@ -100,6 +125,84 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   useEffect(() => {
     fetchProjectData()
   }, [projectId, router])
+
+  // Fungsi Menyimpan Perubahan Edit Proyek
+  async function handleUpdateProject(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editName) return alert('Nama proyek wajib diisi!')
+
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        name: editName,
+        description: editDescription,
+        start_date: editStartDate || null,
+        end_date: editEndDate || null,
+      })
+      .eq('id', projectId)
+
+    if (error) {
+      alert('Gagal memperbarui proyek: ' + error.message)
+    } else {
+      setIsEditingProject(false)
+      fetchProjectData()
+    }
+  }
+
+  // Fungsi Menyimpan Perubahan Item RAB
+  async function handleUpdateRab(itemId: string) {
+  if (!editRabName || !editRabQty || !editRabPrice) {
+    return alert('Nama, Volume, dan Harga Satuan wajib diisi!')
+  }
+
+  const qty = parseFloat(editRabQty)
+  const price = parseFloat(editRabPrice)
+
+  // Hapus properti total_cost dari objek update karena sudah di-handle otomatis oleh database
+  const { error } = await supabase
+    .from('rab_items')
+    .update({
+      name: editRabName,
+      category: editRabCategory,
+      unit: editRabUnit,
+      quantity: qty,
+      unit_price: price,
+    })
+    .eq('id', itemId)
+
+  if (error) {
+    alert('Gagal memperbarui item RAB: ' + error.message)
+  } else {
+    setEditingRabId(null)
+    fetchProjectData()
+  }
+}
+
+  // Fungsi Menyimpan Perubahan Pengeluaran Aktual
+  async function handleUpdateExpense(expId: string) {
+    if (!editExpName || !editExpAmount) {
+      return alert('Keterangan dan Jumlah Biaya wajib diisi!')
+    }
+
+    const amount = parseFloat(editExpAmount)
+
+    const { error } = await supabase
+      .from('actual_expenses')
+      .update({
+        date: editExpDate,
+        name: editExpName,
+        category: editExpCategory,
+        amount: amount,
+      })
+      .eq('id', expId)
+
+    if (error) {
+      alert('Gagal memperbarui pengeluaran: ' + error.message)
+    } else {
+      setEditingExpId(null)
+      fetchProjectData()
+    }
+  }
 
   async function handleAddRab(e: React.FormEvent) {
     e.preventDefault()
@@ -177,14 +280,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   }
 
   return (
-    /* Hapus kelas 'flex min-h-screen' dari kontainer utama ini agar tidak bentrok dengan layout.tsx */
     <div className="w-full">
-      {/* 
-        HAPUS baris pemanggilan Sidebar di sini:
-        <Sidebar userEmail={userEmail} /> 
-      */}
-
-      {/* Konten Utama Halaman Proyek / Detail RAB */}
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <Link href="/projects" className="text-sm text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1.5 transition">
@@ -198,14 +294,88 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </button>
         </div>
 
-        {/* Header Proyek */}
+        {/* Header Proyek & Fitur Edit Proyek */}
         <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
-          <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">{project.name}</h1>
-          <p className="text-slate-400 text-sm mb-4">{project.description || 'Tidak ada deskripsi'}</p>
-          <div className="flex flex-wrap gap-6 text-xs text-slate-300 pt-3 border-t border-slate-800">
-            <span>Tanggal Mulai: <strong className="text-white font-medium font-mono">{project.start_date || '-'}</strong></span>
-            <span>Tanggal Selesai: <strong className="text-white font-medium font-mono">{project.end_date || '-'}</strong></span>
-          </div>
+          {!isEditingProject ? (
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">{project.name}</h1>
+                <p className="text-slate-400 text-sm mb-4">{project.description || 'Tidak ada deskripsi'}</p>
+                <div className="flex flex-wrap gap-6 text-xs text-slate-300 pt-3 border-t border-slate-800">
+                  <span>Tanggal Mulai: <strong className="text-white font-medium font-mono">{project.start_date || '-'}</strong></span>
+                  <span>Tanggal Selesai: <strong className="text-white font-medium font-mono">{project.end_date || '-'}</strong></span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditingProject(true)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition border border-slate-700 cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                ✏️ Edit Proyek
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleUpdateProject} className="space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h2 className="text-base font-bold text-emerald-400">Edit Informasi Proyek</h2>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingProject(false)}
+                  className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Nama Proyek</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Deskripsi</label>
+                  <input
+                    type="text"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Tanggal Mulai</label>
+                  <input
+                    type="date"
+                    value={editStartDate}
+                    onChange={(e) => setEditStartDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Tanggal Selesai</label>
+                  <input
+                    type="date"
+                    value={editEndDate}
+                    onChange={(e) => setEditEndDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-5 py-2 rounded-lg text-xs transition shadow-lg cursor-pointer"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Kartu Analisis Ringkasan Finansial (BVA) */}
@@ -337,29 +507,110 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {rabItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-800/40 transition">
-                      <td className="py-4 px-4 font-medium text-slate-100">
-                        {item.name} <span className="text-xs text-slate-500 block font-normal">({item.unit || 'unit'})</span>
-                      </td>
-                      <td className="py-4 px-4 text-slate-300 text-sm">{item.category || '-'}</td>
-                      <td className="py-4 px-4 text-slate-300 font-mono text-right">{item.quantity}</td>
-                      <td className="py-4 px-4 text-slate-300 font-mono text-sm text-right">
-                        Rp {Number(item.unit_price).toLocaleString('id-ID')}
-                      </td>
-                      <td className="py-4 px-4 text-emerald-400 font-mono font-semibold text-sm text-right">
-                        Rp {Number(item.total_cost).toLocaleString('id-ID')}
-                      </td>
-                      <td className="no-print py-4 px-4 text-center">
-                        <button
-                          onClick={() => handleDeleteRab(item.id)}
-                          className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
-                        >
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {rabItems.map((item) => {
+                    const isEditing = editingRabId === item.id
+
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-800/40 transition">
+                        {isEditing ? (
+                          <>
+                            <td className="py-3 px-4">
+                              <input
+                                type="text"
+                                value={editRabName}
+                                onChange={(e) => setEditRabName(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
+                              />
+                              <input
+                                type="text"
+                                value={editRabUnit}
+                                onChange={(e) => setEditRabUnit(e.target.value)}
+                                placeholder="Satuan"
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-400 mt-1"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
+                              <input
+                                type="text"
+                                value={editRabCategory}
+                                onChange={(e) => setEditRabCategory(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
+                              />
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <input
+                                type="number"
+                                step="any"
+                                value={editRabQty}
+                                onChange={(e) => setEditRabQty(e.target.value)}
+                                className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                              />
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <input
+                                type="number"
+                                value={editRabPrice}
+                                onChange={(e) => setEditRabPrice(e.target.value)}
+                                className="w-28 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                              />
+                            </td>
+                            <td className="py-3 px-4 text-emerald-400 font-mono text-right text-xs">
+                              Otomatis
+                            </td>
+                            <td className="no-print py-3 px-4 text-center space-x-1">
+                              <button
+                                onClick={() => handleUpdateRab(item.id)}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer"
+                              >
+                                Simpan
+                              </button>
+                              <button
+                                onClick={() => setEditingRabId(null)}
+                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-4 px-4 font-medium text-slate-100">
+                              {item.name} <span className="text-xs text-slate-500 block font-normal">({item.unit || 'unit'})</span>
+                            </td>
+                            <td className="py-4 px-4 text-slate-300 text-sm">{item.category || '-'}</td>
+                            <td className="py-4 px-4 text-slate-300 font-mono text-right">{item.quantity}</td>
+                            <td className="py-4 px-4 text-slate-300 font-mono text-sm text-right">
+                              Rp {Number(item.unit_price).toLocaleString('id-ID')}
+                            </td>
+                            <td className="py-4 px-4 text-emerald-400 font-mono font-semibold text-sm text-right">
+                              Rp {Number(item.total_cost).toLocaleString('id-ID')}
+                            </td>
+                            <td className="no-print py-4 px-4 text-center space-x-2">
+                              <button
+                                onClick={() => {
+                                  setEditingRabId(item.id)
+                                  setEditRabName(item.name)
+                                  setEditRabCategory(item.category || '')
+                                  setEditRabUnit(item.unit || '')
+                                  setEditRabQty(item.quantity.toString())
+                                  setEditRabPrice(item.unit_price.toString())
+                                }}
+                                className="text-sky-400 hover:text-sky-300 text-xs bg-sky-950/30 hover:bg-sky-950/60 border border-sky-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRab(item.id)}
+                                className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                              >
+                                Hapus
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -455,24 +706,93 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {actualExpenses.map((exp) => (
-                    <tr key={exp.id} className="hover:bg-slate-800/40 transition">
-                      <td className="py-4 px-4 text-slate-300 text-sm font-mono">{exp.date}</td>
-                      <td className="py-4 px-4 font-medium text-slate-100">{exp.name}</td>
-                      <td className="py-4 px-4 text-slate-300 text-sm">{exp.category || '-'}</td>
-                      <td className="py-4 px-4 text-sky-400 font-mono font-semibold text-sm text-right">
-                        Rp {Number(exp.amount).toLocaleString('id-ID')}
-                      </td>
-                      <td className="no-print py-4 px-4 text-center">
-                        <button
-                          onClick={() => handleDeleteExpense(exp.id)}
-                          className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
-                        >
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {actualExpenses.map((exp) => {
+                    const isEditing = editingExpId === exp.id
+
+                    return (
+                      <tr key={exp.id} className="hover:bg-slate-800/40 transition">
+                        {isEditing ? (
+                          <>
+                            <td className="py-3 px-4">
+                              <input
+                                type="date"
+                                value={editExpDate}
+                                onChange={(e) => setEditExpDate(e.target.value)}
+                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 font-mono"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
+                              <input
+                                type="text"
+                                value={editExpName}
+                                onChange={(e) => setEditExpName(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
+                              <input
+                                type="text"
+                                value={editExpCategory}
+                                onChange={(e) => setEditExpCategory(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
+                              />
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <input
+                                type="number"
+                                value={editExpAmount}
+                                onChange={(e) => setEditExpAmount(e.target.value)}
+                                className="w-32 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                              />
+                            </td>
+                            <td className="no-print py-3 px-4 text-center space-x-1">
+                              <button
+                                onClick={() => handleUpdateExpense(exp.id)}
+                                className="bg-sky-600 hover:bg-sky-500 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer"
+                              >
+                                Simpan
+                              </button>
+                              <button
+                                onClick={() => setEditingExpId(null)}
+                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-4 px-4 text-slate-300 text-sm font-mono">{exp.date}</td>
+                            <td className="py-4 px-4 font-medium text-slate-100">{exp.name}</td>
+                            <td className="py-4 px-4 text-slate-300 text-sm">{exp.category || '-'}</td>
+                            <td className="py-4 px-4 text-sky-400 font-mono font-semibold text-sm text-right">
+                              Rp {Number(exp.amount).toLocaleString('id-ID')}
+                            </td>
+                            <td className="no-print py-4 px-4 text-center space-x-2">
+                              <button
+                                onClick={() => {
+                                  setEditingExpId(exp.id)
+                                  setEditExpDate(exp.date)
+                                  setEditExpName(exp.name)
+                                  setEditExpCategory(exp.category || '')
+                                  setEditExpAmount(exp.amount.toString())
+                                }}
+                                className="text-sky-400 hover:text-sky-300 text-xs bg-sky-950/30 hover:bg-sky-950/60 border border-sky-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteExpense(exp.id)}
+                                className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                              >
+                                Hapus
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
