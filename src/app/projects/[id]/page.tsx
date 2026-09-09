@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { supabase } from '../../../lib/supabase'
-import Link from 'next/link' // BENAR: Mengimpor Link dari next/link
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 interface Project {
@@ -11,6 +11,7 @@ interface Project {
   description: string
   start_date: string
   end_date: string
+  status: string
 }
 
 interface RabItem {
@@ -49,6 +50,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [editDescription, setEditDescription] = useState('')
   const [editStartDate, setEditStartDate] = useState('')
   const [editEndDate, setEditEndDate] = useState('')
+  const [editStatus, setEditStatus] = useState('Scheduled')
 
   // State untuk Mode Edit RAB Item
   const [editingRabId, setEditingRabId] = useState<string | null>(null)
@@ -78,6 +80,43 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [expAmount, setExpAmount] = useState('')
   const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0])
 
+  // Fungsi helper untuk mengevaluasi status efektif (deteksi otomatis Overdue)
+  function getEffectiveStatus(proj: { status: string; end_date?: string } | null) {
+    if (!proj) return 'Scheduled'
+    if (proj.status === 'Closed' || proj.status === 'On Hold') {
+      return proj.status
+    }
+
+    if (proj.end_date) {
+      const today = new Date().toISOString().split('T')[0]
+      if (proj.end_date < today) {
+        return 'Overdue'
+      }
+    }
+
+    return proj.status || 'Scheduled'
+  }
+
+  // Komponen Helper untuk Badge Status
+  function renderStatusBadge(rawStatus: string, endDate: string) {
+    const effectiveStatus = getEffectiveStatus({ status: rawStatus, end_date: endDate })
+
+    switch (effectiveStatus) {
+      case 'Scheduled':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-sky-950 text-sky-400 border border-sky-800">Scheduled</span>
+      case 'On Track':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800">On Track</span>
+      case 'On Hold':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-amber-950 text-amber-400 border border-amber-800">On Hold</span>
+      case 'Overdue':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-red-950 text-red-400 border border-red-800 animate-pulse">Overdue</span>
+      case 'Closed':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-slate-900 text-slate-400 border border-slate-700">Closed</span>
+      default:
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-slate-900 text-slate-400 border border-slate-700">{effectiveStatus}</span>
+    }
+  }
+
   async function fetchProjectData() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
@@ -105,6 +144,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     setEditDescription(projData.description || '')
     setEditStartDate(projData.start_date || '')
     setEditEndDate(projData.end_date || '')
+    setEditStatus(projData.status || 'Scheduled')
 
     // Ambil Data RAB
     const { data: rabData } = await supabase
@@ -138,6 +178,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         description: editDescription,
         start_date: editStartDate || null,
         end_date: editEndDate || null,
+        status: editStatus,
       })
       .eq('id', projectId)
 
@@ -151,32 +192,31 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
   // Fungsi Menyimpan Perubahan Item RAB
   async function handleUpdateRab(itemId: string) {
-  if (!editRabName || !editRabQty || !editRabPrice) {
-    return alert('Nama, Volume, dan Harga Satuan wajib diisi!')
+    if (!editRabName || !editRabQty || !editRabPrice) {
+      return alert('Nama, Volume, dan Harga Satuan wajib diisi!')
+    }
+
+    const qty = parseFloat(editRabQty)
+    const price = parseFloat(editRabPrice)
+
+    const { error } = await supabase
+      .from('rab_items')
+      .update({
+        name: editRabName,
+        category: editRabCategory,
+        unit: editRabUnit,
+        quantity: qty,
+        unit_price: price,
+      })
+      .eq('id', itemId)
+
+    if (error) {
+      alert('Gagal memperbarui item RAB: ' + error.message)
+    } else {
+      setEditingRabId(null)
+      fetchProjectData()
+    }
   }
-
-  const qty = parseFloat(editRabQty)
-  const price = parseFloat(editRabPrice)
-
-  // Hapus properti total_cost dari objek update karena sudah di-handle otomatis oleh database
-  const { error } = await supabase
-    .from('rab_items')
-    .update({
-      name: editRabName,
-      category: editRabCategory,
-      unit: editRabUnit,
-      quantity: qty,
-      unit_price: price,
-    })
-    .eq('id', itemId)
-
-  if (error) {
-    alert('Gagal memperbarui item RAB: ' + error.message)
-  } else {
-    setEditingRabId(null)
-    fetchProjectData()
-  }
-}
 
   // Fungsi Menyimpan Perubahan Pengeluaran Aktual
   async function handleUpdateExpense(expId: string) {
@@ -299,7 +339,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           {!isEditingProject ? (
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">{project.name}</h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-extrabold tracking-tight text-white">{project.name}</h1>
+                  <div>{renderStatusBadge(project.status, project.end_date)}</div>
+                </div>
                 <p className="text-slate-400 text-sm mb-4">{project.description || 'Tidak ada deskripsi'}</p>
                 <div className="flex flex-wrap gap-6 text-xs text-slate-300 pt-3 border-t border-slate-800">
                   <span>Tanggal Mulai: <strong className="text-white font-medium font-mono">{project.start_date || '-'}</strong></span>
@@ -338,6 +381,19 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   />
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Status Proyek</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+                  >
+                    <option value="Scheduled">Scheduled (Terjadwal)</option>
+                    <option value="On Track">On Track (Berjalan Normal)</option>
+                    <option value="On Hold">On Hold (Ditunda)</option>
+                    <option value="Closed">Closed (Selesai)</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
                   <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Deskripsi</label>
                   <input
                     type="text"

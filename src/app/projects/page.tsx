@@ -11,6 +11,7 @@ interface Project {
   description: string
   start_date: string
   end_date: string
+  status: string
 }
 
 export default function ProjectsPage() {
@@ -19,9 +20,46 @@ export default function ProjectsPage() {
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [status, setStatus] = useState('Scheduled')
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+
+  // Fungsi helper untuk mengevaluasi status efektif (deteksi otomatis Overdue)
+  function getEffectiveStatus(project: { status: string; end_date?: string }) {
+    if (project.status === 'Closed' || project.status === 'On Hold') {
+      return project.status
+    }
+
+    if (project.end_date) {
+      const today = new Date().toISOString().split('T')[0]
+      if (project.end_date < today) {
+        return 'Overdue'
+      }
+    }
+
+    return project.status
+  }
+
+  // Komponen / Helper untuk Badge Status
+  function renderStatusBadge(rawStatus: string, endDate: string) {
+    const effectiveStatus = getEffectiveStatus({ status: rawStatus, end_date: endDate })
+
+    switch (effectiveStatus) {
+      case 'Scheduled':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-sky-950 text-sky-400 border border-sky-800">Scheduled</span>
+      case 'On Track':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800">On Track</span>
+      case 'On Hold':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-amber-950 text-amber-400 border border-amber-800">On Hold</span>
+      case 'Overdue':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-red-950 text-red-400 border border-red-800 animate-pulse">Overdue</span>
+      case 'Closed':
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-slate-900 text-slate-400 border border-slate-700">Closed</span>
+      default:
+        return <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-md bg-slate-900 text-slate-400 border border-slate-700">{effectiveStatus}</span>
+    }
+  }
 
   async function fetchProjects() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -62,6 +100,7 @@ export default function ProjectsPage() {
         description: description,
         start_date: startDate || null,
         end_date: endDate || null,
+        status: status,
         user_id: session.user.id
       }
     ])
@@ -75,6 +114,7 @@ export default function ProjectsPage() {
       setDescription('')
       setStartDate('')
       setEndDate('')
+      setStatus('Scheduled')
       fetchProjects()
     }
   }
@@ -110,7 +150,7 @@ export default function ProjectsPage() {
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Nama Proyek</label>
                 <input
                   type="text"
@@ -121,7 +161,7 @@ export default function ProjectsPage() {
                   required
                 />
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Deskripsi</label>
                 <input
                   type="text"
@@ -148,6 +188,19 @@ export default function ProjectsPage() {
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Status Awal Proyek</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+                >
+                  <option value="Scheduled">Scheduled (Terjadwal)</option>
+                  <option value="On Track">On Track (Berjalan Normal)</option>
+                  <option value="On Hold">On Hold (Ditunda)</option>
+                  <option value="Closed">Closed (Selesai)</option>
+                </select>
               </div>
             </div>
 
@@ -185,7 +238,7 @@ export default function ProjectsPage() {
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
                     <th className="py-3 px-4">Nama Proyek</th>
-                    <th className="py-3 px-4">Deskripsi</th>
+                    <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Mulai</th>
                     <th className="py-3 px-4">Selesai</th>
                     <th className="py-3 px-4 text-center">Aksi</th>
@@ -199,8 +252,11 @@ export default function ProjectsPage() {
                           {p.name}
                           <span className="text-xs opacity-0 group-hover:opacity-100 transition">&rarr;</span>
                         </Link>
+                        <span className="text-xs text-slate-400 font-normal block mt-0.5">{p.description || 'Tidak ada deskripsi'}</span>
                       </td>
-                      <td className="py-4 px-4 text-slate-300 text-sm">{p.description || '-'}</td>
+                      <td className="py-4 px-4">
+                        {renderStatusBadge(p.status, p.end_date)}
+                      </td>
                       <td className="py-4 px-4 text-slate-400 text-sm font-mono">{p.start_date || '-'}</td>
                       <td className="py-4 px-4 text-slate-400 text-sm font-mono">{p.end_date || '-'}</td>
                       <td className="py-4 px-4 text-center">

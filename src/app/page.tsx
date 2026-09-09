@@ -1,18 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase' // Diperbarui dari './lib/supabase' ke '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FolderKanban, Calculator, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react'
 
-// Sisa kode komponen landing page / dashboard tetap sama...
-
 interface Project {
   id: string
   name: string
+  description?: string
   start_date: string
   end_date: string
+  status: string
 }
 
 export default function LandingOrDashboard() {
@@ -25,6 +25,42 @@ export default function LandingOrDashboard() {
   const [recentProjects, setRecentProjects] = useState<Project[]>([])
   const [totalRabGlobal, setTotalRabGlobal] = useState(0)
   const [totalActualGlobal, setTotalActualGlobal] = useState(0)
+
+  // Fungsi helper untuk mengevaluasi status efektif (deteksi otomatis Overdue)
+  function getEffectiveStatus(proj: { status: string; end_date?: string }) {
+    if (proj.status === 'Closed' || proj.status === 'On Hold') {
+      return proj.status
+    }
+
+    if (proj.end_date) {
+      const today = new Date().toISOString().split('T')[0]
+      if (proj.end_date < today) {
+        return 'Overdue'
+      }
+    }
+
+    return proj.status || 'Scheduled'
+  }
+
+  // Komponen Helper untuk Badge Status
+  function renderStatusBadge(rawStatus: string, endDate: string) {
+    const effectiveStatus = getEffectiveStatus({ status: rawStatus, end_date: endDate })
+
+    switch (effectiveStatus) {
+      case 'Scheduled':
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-sky-950 text-sky-400 border border-sky-800">Scheduled</span>
+      case 'On Track':
+        return <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded bg-emerald-950 text-emerald-400 border border-emerald-800">On Track</span>
+      case 'On Hold':
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-amber-950 text-amber-400 border border-amber-800">On Hold</span>
+      case 'Overdue':
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-red-950 text-red-400 border border-red-800 animate-pulse">Overdue</span>
+      case 'Closed':
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-slate-900 text-slate-400 border border-slate-700">Closed</span>
+      default:
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-slate-900 text-slate-400 border border-slate-700">{effectiveStatus}</span>
+    }
+  }
 
   useEffect(() => {
     async function checkUserAndFetch() {
@@ -171,7 +207,7 @@ export default function LandingOrDashboard() {
     )
   }
 
-  // JIKA PENGGUNA SUDAH LOGIN: Tampilkan Dashboard Eksekutif Utama (Seperti yang kita buat sebelumnya)
+  // JIKA PENGGUNA SUDAH LOGIN: Tampilkan Dashboard Eksekutif Utama
   const globalVariance = totalRabGlobal - totalActualGlobal
 
   return (
@@ -241,9 +277,9 @@ export default function LandingOrDashboard() {
                       href={`/projects/${p.id}`}
                       className="block bg-slate-950/50 hover:bg-slate-800/50 border border-slate-800/60 p-4 rounded-xl transition group"
                     >
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center mb-1">
                         <span className="text-sm font-bold text-white group-hover:text-emerald-400 transition">{p.name}</span>
-                        <span className="text-xs text-slate-500 font-mono">&rarr;</span>
+                        <div>{renderStatusBadge(p.status, p.end_date)}</div>
                       </div>
                       <div className="flex gap-4 text-[11px] text-slate-400 font-mono mt-1">
                         <span>Mulai: {p.start_date || '-'}</span>
