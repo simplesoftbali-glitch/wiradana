@@ -1,46 +1,73 @@
 @import "tailwindcss";
 
-/* Kustomisasi scrollbar halus khusus tampilan data-dense ala desktop */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617; /* Warna latar belakang gelap khas slate-950 */
+  background: #020617;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b; /* Warna thumb slate-800 */
+  background: #1e293b;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155; /* Warna hover slate-700 */
+  background: #334155;
 }
 
+/* Styling Khusus Mode Cetak / Ekspor PDF yang Bersih Mutlak */
 @media print {
+  @page {
+    margin: 1cm;
+  }
+
   body {
-    background-color: white !important;
-    color: black !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
   }
   
+  /* Sembunyikan secara mutlak semua elemen navigasi, sidebar, tombol, dan link */
   button, 
   form, 
+  nav,
+  aside,
+  header,
   a,
   .no-print {
+    display: none !important;
+  }
+
+  /* Sembunyikan elemen aktual khusus untuk mode cetak penawaran klien */
+  body.print-client-mode .print-client-hide {
     display: none !important;
   }
 
   div, section {
     background-color: transparent !important;
     border-color: #cbd5e1 !important;
-    color: black !important;
+    color: #0f172a !important;
     box-shadow: none !important;
   }
 
-  table th, table td {
-    color: black !important;
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  table th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-bottom: 2px solid #0f172a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  table td {
+    color: #0f172a !important;
     border-bottom: 1px solid #cbd5e1 !important;
   }
 }

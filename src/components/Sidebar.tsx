@@ -14,7 +14,8 @@ import {
   Menu, 
   X,
   LogOut,
-  User
+  User,
+  Settings
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -49,6 +50,7 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
     { name: 'Laporan & Cash Flow', href: '/reports', icon: LineChart },
     { name: 'Kotak Masuk', href: '/inbox', icon: Inbox },
     { name: 'Feedback', href: '/feedback', icon: MessageSquarePlus },
+    { name: 'Pengaturan Kop', href: '/settings/company', icon: Settings }, // Menu Pengaturan Kop Surat
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
@@ -60,8 +62,8 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
 
   return (
     <>
-      {/* Tombol Hamburger Menu untuk Mobile */}
-      <div className="md:hidden flex items-center justify-between bg-slate-900 text-white px-4 py-3 border-b border-slate-800">
+      {/* Tombol Hamburger Menu untuk Mobile (Ditambahkan kelas no-print) */}
+      <div className="no-print md:hidden flex items-center justify-between bg-slate-900 text-white px-4 py-3 border-b border-slate-800">
         <span className="font-bold text-lg tracking-wider text-emerald-400">WiraDana</span>
         <button 
           onClick={toggleSidebar}
@@ -75,14 +77,14 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
       {/* Overlay latar belakang saat sidebar mobile terbuka */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="no-print fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={toggleSidebar}
         />
       )}
 
-      {/* Konten Sidebar */}
+      {/* Konten Sidebar (Ditambahkan kelas no-print) */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out
+        no-print fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out
         md:translate-x-0 md:static md:inset-auto border-r border-slate-800
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>

@@ -32,6 +32,15 @@ interface ActualExpense {
   amount: number
 }
 
+interface CompanyProfile {
+  company_name: string
+  tagline: string
+  address: string
+  phone: string
+  email: string
+  footer_note: string
+}
+
 export default function ProjectDetail({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const projectId = resolvedParams.id
@@ -40,6 +49,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [project, setProject] = useState<Project | null>(null)
   const [rabItems, setRabItems] = useState<RabItem[]>([])
   const [actualExpenses, setActualExpenses] = useState<ActualExpense[]>([])
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingExpense, setLoadingExpense] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -160,6 +170,17 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       .eq('project_id', projectId)
       .order('date', { ascending: false })
     setActualExpenses(expData || [])
+
+    // Ambil Data Profil Perusahaan / Kop Surat
+    const { data: compData } = await supabase
+      .from('company_profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single()
+
+    if (compData) {
+      setCompanyProfile(compData)
+    }
   }
 
   useEffect(() => {
@@ -322,36 +343,77 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   return (
     <div className="w-full">
       <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <Link href="/projects" className="text-sm text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1.5 transition">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <Link href="/projects" className="no-print text-sm text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1.5 transition">
             &larr; Kembali ke Daftar Proyek
           </Link>
-          <button
-            onClick={() => window.print()}
-            className="no-print bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-          >
-            🖨️ Cetak / Ekspor PDF
-          </button>
+          
+          <div className="no-print flex items-center gap-2">
+            <button
+              onClick={() => {
+                document.body.classList.remove('print-client-mode')
+                window.print()
+              }}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+            >
+              🖨️ Cetak Laporan Internal
+            </button>
+            <button
+              onClick={() => {
+                document.body.classList.add('print-client-mode')
+                window.print()
+                setTimeout(() => {
+                  document.body.classList.remove('print-client-mode')
+                }, 500)
+              }}
+              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 shadow-lg shadow-emerald-900/30"
+            >
+              📄 Cetak Dokumen Penawaran Klien
+            </button>
+          </div>
+        </div>
+
+        {/* KOP SURAT CUSTOM (Hanya muncul saat dicetak) */}
+        <div className="hidden print:block border-b-2 border-slate-900 pb-4 mb-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-xl font-bold uppercase tracking-wider text-slate-900">
+                {companyProfile?.company_name || 'WiraDana Contractor & Project Management'}
+              </h1>
+              <p className="text-xs font-semibold text-slate-700 mt-0.5">
+                {companyProfile?.tagline || 'Solusi Manajemen Proyek & Anggaran Terpadu'}
+              </p>
+              <p className="text-xs text-slate-600 mt-1">
+                {companyProfile?.address || 'Alamat Perusahaan Belum Diatur'} | Telp: {companyProfile?.phone || '-'} | Email: {companyProfile?.email || '-'}
+              </p>
+            </div>
+            <div className="text-right text-xs text-slate-600 font-mono">
+              <p>Tanggal: {new Date().toLocaleDateString('id-ID')}</p>
+            </div>
+          </div>
         </div>
 
         {/* Header Proyek & Fitur Edit Proyek */}
-        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
+        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl print:border-none print:p-0 print:mb-4 print:shadow-none">
           {!isEditingProject ? (
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-extrabold tracking-tight text-white">{project.name}</h1>
-                  <div>{renderStatusBadge(project.status, project.end_date)}</div>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-white print:text-slate-900 print:text-2xl">{project.name}</h1>
+                  {/* Status disembunyikan HANYA untuk cetak penawaran klien, tetap muncul di laporan internal */}
+                  <div className="[.print-client-mode_&]:hidden">{renderStatusBadge(project.status, project.end_date)}</div>
                 </div>
-                <p className="text-slate-400 text-sm mb-4">{project.description || 'Tidak ada deskripsi'}</p>
-                <div className="flex flex-wrap gap-6 text-xs text-slate-300 pt-3 border-t border-slate-800">
-                  <span>Tanggal Mulai: <strong className="text-white font-medium font-mono">{project.start_date || '-'}</strong></span>
-                  <span>Tanggal Selesai: <strong className="text-white font-medium font-mono">{project.end_date || '-'}</strong></span>
+                <p className="text-slate-400 text-sm mb-4 print:text-slate-700">{project.description || 'Tidak ada deskripsi'}</p>
+                
+                {/* Tanggal mulai/selesai disembunyikan HANYA untuk cetak penawaran klien, tetap muncul di laporan internal */}
+                <div className="[.print-client-mode_&]:hidden flex flex-wrap gap-6 text-xs text-slate-300 pt-3 border-t border-slate-800 print:border-slate-300 print:text-slate-700">
+                  <span>Tanggal Mulai: <strong className="text-white print:text-slate-900 font-medium font-mono">{project.start_date || '-'}</strong></span>
+                  <span>Tanggal Selesai: <strong className="text-white print:text-slate-900 font-medium font-mono">{project.end_date || '-'}</strong></span>
                 </div>
               </div>
               <button
                 onClick={() => setIsEditingProject(true)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition border border-slate-700 cursor-pointer flex items-center gap-1.5 shrink-0"
+                className="no-print bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition border border-slate-700 cursor-pointer flex items-center gap-1.5 shrink-0"
               >
                 ✏️ Edit Proyek
               </button>
@@ -434,29 +496,31 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           )}
         </div>
 
-        {/* Kartu Analisis Ringkasan Finansial (BVA) */}
+        {/* Kartu Analisis Ringkasan Finansial (BVA) - Ditata rapi sejajar 3 kolom */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl">
-            <span className="text-xs text-slate-400 block uppercase tracking-wider mb-1">Total Estimasi RAB (Rencana)</span>
-            <span className="text-xl font-extrabold text-emerald-400 font-mono">
+          <div className="print-client-hide bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
+            <span className="text-xs text-slate-400 block uppercase tracking-wider mb-1">Total Estimasi RAB (Penawaran)</span>
+            <span className="text-xl font-extrabold text-emerald-400 font-mono mt-2">
               Rp {grandTotalRab.toLocaleString('id-ID')}
             </span>
           </div>
-          <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl">
+
+          <div className="print-client-hide bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
             <span className="text-xs text-slate-400 block uppercase tracking-wider mb-1">Total Realisasi Aktual</span>
-            <span className="text-xl font-extrabold text-sky-400 font-mono">
+            <span className="text-xl font-extrabold text-sky-400 font-mono mt-2">
               Rp {grandTotalActual.toLocaleString('id-ID')}
             </span>
           </div>
-          <div className={`bg-slate-900/80 border p-5 rounded-2xl shadow-xl ${budgetVariance >= 0 ? 'border-emerald-500/30' : 'border-red-500/50 bg-red-950/10'}`}>
+
+          <div className={`print-client-hide bg-slate-900/80 border p-5 rounded-2xl shadow-xl flex flex-col justify-between ${budgetVariance >= 0 ? 'border-emerald-500/30' : 'border-red-500/50 bg-red-950/10'}`}>
             <div className="flex justify-between items-center mb-1">
               <span className="text-xs text-slate-400 uppercase tracking-wider">Status Anggaran</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${budgetVariance >= 0 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800 animate-pulse'}`}>
                 {budgetVariance >= 0 ? 'Aman / Sisa' : 'Overbudget!'}
               </span>
             </div>
-            <span className={`text-xl font-extrabold font-mono ${budgetVariance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              Rp {Math.abs(budgetVariance).toLocaleString('id-ID')} {budgetVariance < 0 ? 'Defisit' : 'Sisa'}
+            <span className={`text-xl font-extrabold font-mono mt-2 ${budgetVariance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              Rp {Math.abs(budgetVariance).toLocaleString('id-ID')} <span className="text-sm font-semibold">{budgetVariance < 0 ? 'Defisit' : 'Sisa'}</span>
             </span>
           </div>
         </div>
@@ -534,8 +598,8 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         </form>
 
         {/* Tabel Rincian RAB */}
-        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8">
-          <div className="mb-6 border-b border-slate-800 pb-4">
+        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
+          <div className="print:hidden mb-6 border-b border-slate-800 pb-4">
             <h2 className="text-lg font-semibold text-slate-200">Rincian Anggaran Biaya (RAB - Rencana)</h2>
           </div>
 
@@ -553,7 +617,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                  <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider print:border-slate-900 print:text-slate-900">
                     <th className="py-3 px-4">Item Pekerjaan</th>
                     <th className="py-3 px-4">Kategori</th>
                     <th className="py-3 px-4 text-right">Volume</th>
@@ -562,7 +626,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                     <th className="no-print py-3 px-4 text-center">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-800/60 print:divide-slate-300">
                   {rabItems.map((item) => {
                     const isEditing = editingRabId === item.id
 
@@ -630,15 +694,15 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                           </>
                         ) : (
                           <>
-                            <td className="py-4 px-4 font-medium text-slate-100">
-                              {item.name} <span className="text-xs text-slate-500 block font-normal">({item.unit || 'unit'})</span>
+                            <td className="py-4 px-4 font-medium text-slate-100 print:text-slate-900">
+                              {item.name} <span className="text-xs text-slate-500 block font-normal print:text-slate-600">({item.unit || 'unit'})</span>
                             </td>
-                            <td className="py-4 px-4 text-slate-300 text-sm">{item.category || '-'}</td>
-                            <td className="py-4 px-4 text-slate-300 font-mono text-right">{item.quantity}</td>
-                            <td className="py-4 px-4 text-slate-300 font-mono text-sm text-right">
+                            <td className="py-4 px-4 text-slate-300 text-sm print:text-slate-800">{item.category || '-'}</td>
+                            <td className="py-4 px-4 text-slate-300 font-mono text-right print:text-slate-800">{item.quantity}</td>
+                            <td className="py-4 px-4 text-slate-300 font-mono text-sm text-right print:text-slate-800">
                               Rp {Number(item.unit_price).toLocaleString('id-ID')}
                             </td>
-                            <td className="py-4 px-4 text-emerald-400 font-mono font-semibold text-sm text-right">
+                            <td className="py-4 px-4 text-emerald-400 font-mono font-semibold text-sm text-right print:text-slate-900">
                               Rp {Number(item.total_cost).toLocaleString('id-ID')}
                             </td>
                             <td className="no-print py-4 px-4 text-center space-x-2">
@@ -669,190 +733,214 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   })}
                 </tbody>
               </table>
+
+              {/* TOTAL ESTIMASI DI BAWAH TABEL KHUSUS CETAK */}
+              <div className="hidden print:flex justify-end mt-4 pt-3 border-t-2 border-slate-900 text-sm">
+                <div className="text-right">
+                  <span className="text-slate-700 mr-6 uppercase text-xs font-bold tracking-wider">TOTAL ESTIMASI NILAI RAB:</span>
+                  <span className="font-mono font-extrabold text-base text-slate-900">Rp {grandTotalRab.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Form Tambah Biaya Aktual */}
-        <form onSubmit={handleAddExpense} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
-          <h2 className="text-lg font-semibold mb-4 text-sky-400 flex items-center gap-2">
-            <span>+</span> Catat Pengeluaran Lapangan (Aktual)
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Tanggal</label>
-              <input
-                type="date"
-                value={expDate}
-                onChange={(e) => setExpDate(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
-                required
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Keterangan / Nama Belanja</label>
-              <input
-                type="text"
-                value={expName}
-                onChange={(e) => setExpName(e.target.value)}
-                placeholder="Contoh: Bayar tukang minggu ke-1 / Beli semen"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Kategori</label>
-              <input
-                type="text"
-                value={expCategory}
-                onChange={(e) => setExpCategory(e.target.value)}
-                placeholder="Contoh: Upah / Material"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Jumlah Biaya Aktual (Rp)</label>
-              <input
-                type="number"
-                value={expAmount}
-                onChange={(e) => setExpAmount(e.target.value)}
-                placeholder="350000"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition font-mono"
-                required
-              />
-            </div>
-          </div>
-          <div className="flex justify-end pt-2">
-            <button
-              type="submit"
-              disabled={loadingExpense}
-              className="bg-sky-600 hover:bg-sky-500 text-slate-950 font-bold px-6 py-2.5 rounded-lg text-sm transition shadow-lg cursor-pointer disabled:opacity-50"
-            >
-              {loadingExpense ? 'Menyimpan...' : 'Simpan Pengeluaran'}
-            </button>
-          </div>
-        </form>
-
-        {/* Tabel Realisasi Biaya Aktual */}
-        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl">
-          <div className="mb-6 border-b border-slate-800 pb-4">
-            <h2 className="text-lg font-semibold text-slate-200">Realisasi Pengeluaran (Aktual Lapangan)</h2>
-          </div>
-
-          {actualExpenses.length === 0 ? (
-            <div className="text-center py-12 px-6 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 text-base font-mono">
-                💸
+        {/* Form Tambah Biaya Aktual - Disembunyikan HANYA saat mode cetak penawaran klien */}
+        <div className="print-client-hide">
+          <form onSubmit={handleAddExpense} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
+            <h2 className="text-lg font-semibold mb-4 text-sky-400 flex items-center gap-2">
+              <span>+</span> Catat Pengeluaran Lapangan (Aktual)
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Tanggal</label>
+                <input
+                  type="date"
+                  value={expDate}
+                  onChange={(e) => setExpDate(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                  required
+                />
               </div>
-              <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Catatan Pengeluaran</h3>
-              <p className="text-slate-500 text-xs max-w-xs mx-auto">
-                Catat setiap transaksi belanja atau upah harian di lapangan untuk memantau selisih anggaran secara real-time.
-              </p>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Keterangan / Nama Belanja</label>
+                <input
+                  type="text"
+                  value={expName}
+                  onChange={(e) => setExpName(e.target.value)}
+                  placeholder="Contoh: Bayar tukang minggu ke-1 / Beli semen"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Kategori</label>
+                <input
+                  type="text"
+                  value={expCategory}
+                  onChange={(e) => setExpCategory(e.target.value)}
+                  placeholder="Contoh: Upah / Material"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Jumlah Biaya Aktual (Rp)</label>
+                <input
+                  type="number"
+                  value={expAmount}
+                  onChange={(e) => setExpAmount(e.target.value)}
+                  placeholder="350000"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition font-mono"
+                  required
+                />
+              </div>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4">Tanggal</th>
-                    <th className="py-3 px-4">Keterangan</th>
-                    <th className="py-3 px-4">Kategori</th>
-                    <th className="py-3 px-4 text-right">Biaya Aktual</th>
-                    <th className="no-print py-3 px-4 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {actualExpenses.map((exp) => {
-                    const isEditing = editingExpId === exp.id
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={loadingExpense}
+                className="bg-sky-600 hover:bg-sky-500 text-slate-950 font-bold px-6 py-2.5 rounded-lg text-sm transition shadow-lg cursor-pointer disabled:opacity-50"
+              >
+                {loadingExpense ? 'Menyimpan...' : 'Simpan Pengeluaran'}
+              </button>
+            </div>
+          </form>
 
-                    return (
-                      <tr key={exp.id} className="hover:bg-slate-800/40 transition">
-                        {isEditing ? (
-                          <>
-                            <td className="py-3 px-4">
-                              <input
-                                type="date"
-                                value={editExpDate}
-                                onChange={(e) => setEditExpDate(e.target.value)}
-                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 font-mono"
-                              />
-                            </td>
-                            <td className="py-3 px-4">
-                              <input
-                                type="text"
-                                value={editExpName}
-                                onChange={(e) => setEditExpName(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
-                              />
-                            </td>
-                            <td className="py-3 px-4">
-                              <input
-                                type="text"
-                                value={editExpCategory}
-                                onChange={(e) => setEditExpCategory(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
-                              />
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              <input
-                                type="number"
-                                value={editExpAmount}
-                                onChange={(e) => setEditExpAmount(e.target.value)}
-                                className="w-32 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
-                              />
-                            </td>
-                            <td className="no-print py-3 px-4 text-center space-x-1">
-                              <button
-                                onClick={() => handleUpdateExpense(exp.id)}
-                                className="bg-sky-600 hover:bg-sky-500 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer"
-                              >
-                                Simpan
-                              </button>
-                              <button
-                                onClick={() => setEditingExpId(null)}
-                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
-                              >
-                                Batal
-                              </button>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="py-4 px-4 text-slate-300 text-sm font-mono">{exp.date}</td>
-                            <td className="py-4 px-4 font-medium text-slate-100">{exp.name}</td>
-                            <td className="py-4 px-4 text-slate-300 text-sm">{exp.category || '-'}</td>
-                            <td className="py-4 px-4 text-sky-400 font-mono font-semibold text-sm text-right">
-                              Rp {Number(exp.amount).toLocaleString('id-ID')}
-                            </td>
-                            <td className="no-print py-4 px-4 text-center space-x-2">
-                              <button
-                                onClick={() => {
-                                  setEditingExpId(exp.id)
-                                  setEditExpDate(exp.date)
-                                  setEditExpName(exp.name)
-                                  setEditExpCategory(exp.category || '')
-                                  setEditExpAmount(exp.amount.toString())
-                                }}
-                                className="text-sky-400 hover:text-sky-300 text-xs bg-sky-950/30 hover:bg-sky-950/60 border border-sky-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteExpense(exp.id)}
-                                className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
-                              >
-                                Hapus
-                              </button>
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+          {/* Tabel Realisasi Biaya Aktual */}
+          <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl print:border-none print:p-0 print:shadow-none print:mt-6">
+            <div className="mb-6 border-b border-slate-800 pb-4 print:border-slate-900">
+              <h2 className="text-lg font-semibold text-slate-200 print:text-slate-900">Realisasi Pengeluaran (Aktual Lapangan)</h2>
             </div>
+
+            {actualExpenses.length === 0 ? (
+              <div className="text-center py-12 px-6 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
+                <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 text-base font-mono">
+                  💸
+                </div>
+                <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Catatan Pengeluaran</h3>
+                <p className="text-slate-500 text-xs max-w-xs mx-auto">
+                  Catat setiap transaksi belanja atau upah harian di lapangan untuk memantau selisih anggaran secara real-time.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider print:border-slate-900 print:text-slate-900">
+                      <th className="py-3 px-4">Tanggal</th>
+                      <th className="py-3 px-4">Keterangan</th>
+                      <th className="py-3 px-4">Kategori</th>
+                      <th className="py-3 px-4 text-right">Biaya Aktual</th>
+                      <th className="no-print py-3 px-4 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 print:divide-slate-300">
+                    {actualExpenses.map((exp) => {
+                      const isEditing = editingExpId === exp.id
+
+                      return (
+                        <tr key={exp.id} className="hover:bg-slate-800/40 transition">
+                          {isEditing ? (
+                            <>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="date"
+                                  value={editExpDate}
+                                  onChange={(e) => setEditExpDate(e.target.value)}
+                                  className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 font-mono"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="text"
+                                  value={editExpName}
+                                  onChange={(e) => setEditExpName(e.target.value)}
+                                  className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="text"
+                                  value={editExpCategory}
+                                  onChange={(e) => setEditExpCategory(e.target.value)}
+                                  className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
+                                />
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <input
+                                  type="number"
+                                  value={editExpAmount}
+                                  onChange={(e) => setEditExpAmount(e.target.value)}
+                                  className="w-32 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                                />
+                              </td>
+                              <td className="no-print py-3 px-4 text-center space-x-1">
+                                <button
+                                  onClick={() => handleUpdateExpense(exp.id)}
+                                  className="bg-sky-600 hover:bg-sky-500 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer"
+                                >
+                                  Simpan
+                                </button>
+                                <button
+                                  onClick={() => setEditingExpId(null)}
+                                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
+                                >
+                                  Batal
+                                </button>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="py-4 px-4 text-slate-300 text-sm font-mono print:text-slate-800">{exp.date}</td>
+                              <td className="py-4 px-4 font-medium text-slate-100 print:text-slate-900">{exp.name}</td>
+                              <td className="py-4 px-4 text-slate-300 text-sm print:text-slate-800">{exp.category || '-'}</td>
+                              <td className="py-4 px-4 text-sky-400 font-mono font-semibold text-sm text-right print:text-slate-900">
+                                Rp {Number(exp.amount).toLocaleString('id-ID')}
+                              </td>
+                              <td className="no-print py-4 px-4 text-center space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingExpId(exp.id)
+                                    setEditExpDate(exp.date)
+                                    setEditExpName(exp.name)
+                                    setEditExpCategory(exp.category || '')
+                                    setEditExpAmount(exp.amount.toString())
+                                  }}
+                                  className="text-sky-400 hover:text-sky-300 text-xs bg-sky-950/30 hover:bg-sky-950/60 border border-sky-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteExpense(exp.id)}
+                                  className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                                >
+                                  Hapus
+                                </button>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* CATATAN KAKI & TANDA TANGAN DOKUMEN (Hanya muncul saat dicetak) */}
+        <div className="hidden print:block mt-8 pt-4 border-t border-slate-300 text-xs text-slate-600 space-y-6">
+          {companyProfile?.footer_note && (
+            <p><strong>Catatan & Ketentuan:</strong> {companyProfile.footer_note}</p>
           )}
+
+          <div className="flex justify-end pt-8">
+            <div className="text-center space-y-16 w-64">
+              <p>Hormat Kami,</p>
+              <p className="font-bold underline text-slate-900">{companyProfile?.company_name || 'WiraDana Contractor'}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
