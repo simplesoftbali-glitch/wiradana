@@ -40,6 +40,8 @@ export default function RootLayout({
     return (
       <html lang="id">
         <head>
+          {/* Meta Tag Verifikasi Google Search Console */}
+          <meta name="google-site-verification" content="MXq4efoBwfqcwlpgnXluIP2ECiDDHi7_8avXuGGRLpE" />
           <title>WiraDana - Aplikasi Estimasi RAB & Manajemen Keuangan Proyek Kontraktor</title>
           <meta name="description" content="Aplikasi manajemen proyek desktop-first untuk estimasi RAB, pencatatan pengeluaran harian, dan analisis Budget Variance Analysis (BVA) kontraktor." />
         </head>
