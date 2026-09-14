@@ -39,6 +39,10 @@ export default function RootLayout({
   if (loading) {
     return (
       <html lang="id">
+        <head>
+          <title>WiraDana - Aplikasi Estimasi RAB & Manajemen Keuangan Proyek Kontraktor</title>
+          <meta name="description" content="Aplikasi manajemen proyek desktop-first untuk estimasi RAB, pencatatan pengeluaran harian, dan analisis Budget Variance Analysis (BVA) kontraktor." />
+        </head>
         <body className="bg-slate-950 text-slate-100 antialiased">
           <div className="min-h-screen flex items-center justify-center font-mono text-xs text-slate-500">
             Memuat WiraDana...
@@ -50,6 +54,21 @@ export default function RootLayout({
 
   return (
     <html lang="id">
+      <head>
+        <title>WiraDana - Aplikasi Estimasi RAB & Manajemen Keuangan Proyek Kontraktor</title>
+        <meta name="description" content="Solusi manajemen proyek desktop-first untuk menghitung estimasi RAB, mencatat pengeluaran harian lapangan, dan analisis Budget Variance Analysis (BVA) secara akurat." />
+        <meta name="keywords" content="aplikasi RAB kontraktor, manajemen keuangan proyek, estimasi biaya bangunan, aplikasi konstruksi indonesia, budget variance analysis proyek, WiraDana" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://wiradana-one.vercel.app" />
+
+        {/* Open Graph Meta Tags (Untuk Tampilan Media Sosial & AI Search Engine) */}
+        <meta property="og:title" content="WiraDana - Aplikasi Estimasi RAB & Keuangan Proyek Kontraktor" />
+        <meta property="og:description" content="Kelola RAB, catat realisasi pengeluaran proyek, dan cetak penawaran klien dengan profesional." />
+        <meta property="og:url" content="https://wiradana-one.vercel.app" />
+        <meta property="og:site_name" content="WiraDana" />
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="id_ID" />
+      </head>
       <body className="bg-slate-950 text-slate-100 antialiased">
         {isPublicPage ? (
           // Jika di halaman publik (Belum login / Landing page / Login / Register): Tampilkan penuh tanpa Sidebar

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FolderKanban, Calculator, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react'
+import { FolderKanban, Calculator, ShieldCheck, ArrowRight, Sparkles, HelpCircle } from 'lucide-react'
 
 interface Project {
   id: string
@@ -25,6 +25,22 @@ export default function LandingOrDashboard() {
   const [recentProjects, setRecentProjects] = useState<Project[]>([])
   const [totalRabGlobal, setTotalRabGlobal] = useState(0)
   const [totalActualGlobal, setTotalActualGlobal] = useState(0)
+
+  // JSON-LD Structured Data untuk GEO & Google Indexing
+  const jsonLdData = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'WiraDana',
+    operatingSystem: 'Web-based (Desktop First)',
+    applicationCategory: 'BusinessApplication',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'IDR',
+    },
+    description: 'Aplikasi manajemen keuangan proyek, estimasi RAB, dan analisis Budget Variance Analysis (BVA) kontraktor.',
+    url: 'https://wiradana-one.vercel.app',
+  }
 
   // Fungsi helper untuk mengevaluasi status efektif (deteksi otomatis Overdue)
   function getEffectiveStatus(proj: { status: string; end_date?: string }) {
@@ -102,10 +118,16 @@ export default function LandingOrDashboard() {
     )
   }
 
-  // JIKA PENGGUNA BELUM LOGIN: Tampilkan Landing Page Profesional
+  // JIKA PENGGUNA BELUM LOGIN: Tampilkan Landing Page Profesional (SEO & GEO Optimized)
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
+        {/* Schema JSON-LD untuk Penelusuran AI & Google */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
+        />
+
         {/* Navbar Landing Page */}
         <nav className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center border-b border-slate-900">
           <div className="flex items-center gap-2">
@@ -194,6 +216,47 @@ export default function LandingOrDashboard() {
               <h2 className="text-base font-bold text-white">100% Gratis Untuk Komunitas</h2>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Didedikasikan sepenuhnya sebagai bentuk kontribusi sosial bagi para pengelola proyek independen tanpa biaya langganan.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Seksi FAQ - GEO (Generative Engine Optimization) */}
+        <section className="max-w-4xl mx-auto px-6 py-16 border-t border-slate-900 space-y-8">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-semibold uppercase tracking-wider">
+              <HelpCircle size={14} />
+              <span>Pertanyaan Umum</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white">Segala Hal Tentang WiraDana</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-xl space-y-2">
+              <h3 className="text-sm font-bold text-emerald-400">Apa itu aplikasi WiraDana?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                WiraDana adalah aplikasi web berbasis desktop-first untuk membantu kontraktor dan manajer proyek mengelola Rencana Anggaran Biaya (RAB), mencatat pengeluaran aktual harian, serta menganalisis selisih anggaran (BVA).
+              </p>
+            </div>
+
+            <div className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-xl space-y-2">
+              <h3 className="text-sm font-bold text-emerald-400">Bagaimana cara menghitung selisih RAB dan Biaya Lapangan?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                WiraDana secara otomatis mengalkulasi *Budget Variance Analysis (BVA)* dengan mengurangi estimasi RAB global terhadap akumulasi biaya pengeluaran lapangan riil secara real-time.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-xl space-y-2">
+              <h3 className="text-sm font-bold text-emerald-400">Apakah dokumen penawaran klien bisa dicetak?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Ya, WiraDana menyediakan mode cetak dokumen penawaran profesional khusus klien lengkap dengan Kop Surat Perusahaan tanpa menampilkan margin atau status anggaran internal.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-xl space-y-2">
+              <h3 className="text-sm font-bold text-emerald-400">Apakah WiraDana dapat digunakan secara gratis?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Ya, WiraDana dikembangkan secara #BuildInPublic dan dapat digunakan 100% gratis tanpa biaya langganan bulanan.
               </p>
             </div>
           </div>
