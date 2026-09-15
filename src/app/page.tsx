@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FolderKanban, Calculator, ShieldCheck, ArrowRight, Sparkles, HelpCircle } from 'lucide-react'
+import { FolderKanban, Calculator, ShieldCheck, ArrowRight, Sparkles, HelpCircle, BarChart3 } from 'lucide-react'
+import BvaChart from '../components/BvaChart'
 
 interface Project {
   id: string
@@ -13,6 +14,12 @@ interface Project {
   start_date: string
   end_date: string
   status: string
+}
+
+interface ChartItem {
+  name: string
+  RAB: number
+  Aktual: number
 }
 
 export default function LandingOrDashboard() {
@@ -25,6 +32,7 @@ export default function LandingOrDashboard() {
   const [recentProjects, setRecentProjects] = useState<Project[]>([])
   const [totalRabGlobal, setTotalRabGlobal] = useState(0)
   const [totalActualGlobal, setTotalActualGlobal] = useState(0)
+  const [chartData, setChartData] = useState<ChartItem[]>([])
 
   // JSON-LD Structured Data untuk GEO & Google Indexing
   const jsonLdData = {
@@ -42,7 +50,6 @@ export default function LandingOrDashboard() {
     url: 'https://wiradana-one.vercel.app',
   }
 
-  // Fungsi helper untuk mengevaluasi status efektif (deteksi otomatis Overdue)
   function getEffectiveStatus(proj: { status: string; end_date?: string }) {
     if (proj.status === 'Closed' || proj.status === 'On Hold') {
       return proj.status
@@ -58,7 +65,6 @@ export default function LandingOrDashboard() {
     return proj.status || 'Scheduled'
   }
 
-  // Komponen Helper untuk Badge Status
   function renderStatusBadge(rawStatus: string, endDate: string) {
     const effectiveStatus = getEffectiveStatus({ status: rawStatus, end_date: endDate })
 
@@ -84,7 +90,7 @@ export default function LandingOrDashboard() {
       setSession(session)
 
       if (session) {
-        // Jika sudah login, ambil data dashboard
+        // Ambil Data Proyek
         const { data: projData } = await supabase
           .from('projects')
           .select('*')
@@ -93,16 +99,37 @@ export default function LandingOrDashboard() {
         if (projData) {
           setProjectsCount(projData.length)
           setRecentProjects(projData.slice(0, 5))
+
+          // Ambil Data RAB dan Pengeluaran untuk Grafik BVA
+          const { data: rabData } = await supabase.from('rab_items').select('project_id, total_cost')
+          const { data: expData } = await supabase.from('actual_expenses').select('project_id, amount')
+
+          // Hitung Global Total
+          const rabSum = rabData?.reduce((acc: number, curr: { total_cost: number | null }) => acc + (curr.total_cost || 0), 0) || 0
+          const expSum = expData?.reduce((acc: number, curr: { amount: number | null }) => acc + (curr.amount || 0), 0) || 0
+
+          setTotalRabGlobal(rabSum)
+          setTotalActualGlobal(expSum)
+
+          // Susun Data Per Proyek untuk Grafik
+          const formattedChartData: ChartItem[] = projData.slice(0, 6).map((proj) => {
+            const projRab = rabData
+              ?.filter((r) => r.project_id === proj.id)
+              .reduce((acc, curr) => acc + (curr.total_cost || 0), 0) || 0
+
+            const projExp = expData
+              ?.filter((e) => e.project_id === proj.id)
+              .reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0
+
+            return {
+              name: proj.name.length > 12 ? proj.name.substring(0, 12) + '...' : proj.name,
+              RAB: projRab,
+              Aktual: projExp,
+            }
+          })
+
+          setChartData(formattedChartData)
         }
-
-        const { data: rabData } = await supabase.from('rab_items').select('total_cost')
-        const { data: expData } = await supabase.from('actual_expenses').select('amount')
-
-        const rabSum = rabData?.reduce((acc: number, curr: { total_cost: number | null }) => acc + (curr.total_cost || 0), 0) || 0
-        const expSum = expData?.reduce((acc: number, curr: { amount: number | null }) => acc + (curr.amount || 0), 0) || 0
-
-        setTotalRabGlobal(rabSum)
-        setTotalActualGlobal(expSum)
       }
       setLoading(false)
     }
@@ -118,17 +145,15 @@ export default function LandingOrDashboard() {
     )
   }
 
-  // JIKA PENGGUNA BELUM LOGIN: Tampilkan Landing Page Profesional (SEO & GEO Optimized)
+  // JIKA PENGGUNA BELUM LOGIN: Landing Page
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
-        {/* Schema JSON-LD untuk Penelusuran AI & Google */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
         />
 
-        {/* Navbar Landing Page */}
         <nav className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center border-b border-slate-900">
           <div className="flex items-center gap-2">
             <span className="bg-emerald-500 w-3 h-3 rounded-full inline-block"></span>
@@ -150,7 +175,6 @@ export default function LandingOrDashboard() {
           </div>
         </nav>
 
-        {/* Hero Section */}
         <section className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/60 text-emerald-400 text-xs font-medium">
             <Sparkles size={14} />
@@ -186,7 +210,6 @@ export default function LandingOrDashboard() {
           </div>
         </section>
 
-        {/* Fitur Unggulan (Value Proposition) */}
         <section className="max-w-5xl mx-auto px-6 py-16 border-t border-slate-900">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl space-y-3">
@@ -221,7 +244,6 @@ export default function LandingOrDashboard() {
           </div>
         </section>
 
-        {/* Seksi FAQ - GEO (Generative Engine Optimization) */}
         <section className="max-w-4xl mx-auto px-6 py-16 border-t border-slate-900 space-y-8">
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-semibold uppercase tracking-wider">
@@ -262,7 +284,6 @@ export default function LandingOrDashboard() {
           </div>
         </section>
 
-        {/* Footer Landing Page */}
         <footer className="max-w-6xl mx-auto px-6 py-8 border-t border-slate-900 text-center text-xs text-slate-500">
           <p>© 2026 WiraDana. Dibangun dengan pendekatan #BuildInPublic untuk kemandirian pengelola proyek.</p>
         </footer>
@@ -270,7 +291,7 @@ export default function LandingOrDashboard() {
     )
   }
 
-  // JIKA PENGGUNA SUDAH LOGIN: Tampilkan Dashboard Eksekutif Utama
+  // JIKA PENGGUNA SUDAH LOGIN: Dashboard Utama (Lengkap dengan Grafik BVA)
   const globalVariance = totalRabGlobal - totalActualGlobal
 
   return (
@@ -293,6 +314,7 @@ export default function LandingOrDashboard() {
         </header>
 
         <div className="space-y-8">
+          {/* Kartu Finansial Makro */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-slate-900/80 backdrop-blur border border-slate-800 p-6 rounded-2xl shadow-xl">
               <span className="text-xs text-slate-400 block uppercase tracking-wider mb-2">Total Proyek Aktif</span>
@@ -319,6 +341,20 @@ export default function LandingOrDashboard() {
             </div>
           </div>
 
+          {/* Seksi Visualisasi Grafik Analisis BVA */}
+          <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2">
+                <BarChart3 size={18} className="text-emerald-400" />
+                <span>Analisis Komparasi BVA (RAB vs Realisasi Field)</span>
+              </h2>
+              <span className="text-xs text-slate-500 font-mono">Top 6 Proyek</span>
+            </div>
+            
+            <BvaChart data={chartData} />
+          </div>
+
+          {/* Tabel Proyek Terbaru & Pintasan Menu */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl">
               <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
