@@ -41,6 +41,17 @@ interface CompanyProfile {
   footer_note: string
 }
 
+// Rekomendasi Sub-Kategori Standar Konstruksi
+const DEFAULT_SUGGESTIONS = [
+  'Pekerjaan Persiapan',
+  'Pekerjaan Pondasi & Struktur',
+  'Pekerjaan Dinding & Pasangan',
+  'Pekerjaan Atap & Plafon',
+  'Pekerjaan Finishing & Pengecatan',
+  'Pekerjaan Elektrikal & Sanitasi',
+  'Pekerjaan Lain-lain'
+]
+
 export default function ProjectDetail({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const projectId = resolvedParams.id
@@ -77,12 +88,13 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [editExpCategory, setEditExpCategory] = useState('')
   const [editExpAmount, setEditExpAmount] = useState('')
 
-  // Form State untuk RAB Item baru
+  // Form State untuk RAB Item baru (Dinamis / Custom Kategori)
   const [name, setName] = useState('')
   const [unit, setUnit] = useState('')
   const [quantity, setQuantity] = useState('')
   const [unitPrice, setUnitPrice] = useState('')
   const [category, setCategory] = useState('')
+  const [customCategory, setCustomCategory] = useState('')
 
   // Form State untuk Biaya Aktual baru
   const [expName, setExpName] = useState('')
@@ -90,7 +102,15 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [expAmount, setExpAmount] = useState('')
   const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0])
 
-  // Fungsi helper untuk mengevaluasi status efektif (deteksi otomatis Overdue)
+  // Menggabungkan saran bawaan dan kategori yang sudah ada di proyek secara unik
+  const existingCategories = Array.from(
+    new Set([
+      ...DEFAULT_SUGGESTIONS,
+      ...rabItems.map((item) => item.category).filter(Boolean)
+    ])
+  )
+
+  // Fungsi helper untuk mengevaluasi status efektif
   function getEffectiveStatus(proj: { status: string; end_date?: string } | null) {
     if (!proj) return 'Scheduled'
     if (proj.status === 'Closed' || proj.status === 'On Hold') {
@@ -136,7 +156,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
     setUserEmail(session.user.email || null)
 
-    // Ambil Data Proyek dengan pengamanan RLS
     const { data: projData, error: projError } = await supabase
       .from('projects')
       .select('*')
@@ -156,14 +175,12 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     setEditEndDate(projData.end_date || '')
     setEditStatus(projData.status || 'Scheduled')
 
-    // Ambil Data RAB
     const { data: rabData } = await supabase
       .from('rab_items')
       .select('*')
       .eq('project_id', projectId)
     setRabItems(rabData || [])
 
-    // Ambil Data Biaya Aktual
     const { data: expData } = await supabase
       .from('actual_expenses')
       .select('*')
@@ -171,7 +188,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       .order('date', { ascending: false })
     setActualExpenses(expData || [])
 
-    // Ambil Data Profil Perusahaan / Kop Surat
     const { data: compData } = await supabase
       .from('company_profiles')
       .select('*')
@@ -187,7 +203,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     fetchProjectData()
   }, [projectId, router])
 
-  // Fungsi Menyimpan Perubahan Edit Proyek
   async function handleUpdateProject(e: React.FormEvent) {
     e.preventDefault()
     if (!editName) return alert('Nama proyek wajib diisi!')
@@ -211,7 +226,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     }
   }
 
-  // Fungsi Menyimpan Perubahan Item RAB
   async function handleUpdateRab(itemId: string) {
     if (!editRabName || !editRabQty || !editRabPrice) {
       return alert('Nama, Volume, dan Harga Satuan wajib diisi!')
@@ -224,7 +238,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       .from('rab_items')
       .update({
         name: editRabName,
-        category: editRabCategory,
+        category: editRabCategory || 'Pekerjaan Lain-lain',
         unit: editRabUnit,
         quantity: qty,
         unit_price: price,
@@ -239,7 +253,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     }
   }
 
-  // Fungsi Menyimpan Perubahan Pengeluaran Aktual
   async function handleUpdateExpense(expId: string) {
     if (!editExpName || !editExpAmount) {
       return alert('Keterangan dan Jumlah Biaya wajib diisi!')
@@ -269,6 +282,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     e.preventDefault()
     if (!name || !quantity || !unitPrice) return alert('Nama, Volume, dan Harga Satuan wajib diisi!')
 
+    const finalCategory = category === '__custom__' || !category 
+      ? (customCategory.trim() || 'Pekerjaan Lain-lain') 
+      : category
+
     setLoading(true)
     const { error } = await supabase.from('rab_items').insert([
       {
@@ -277,7 +294,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         unit: unit,
         quantity: parseFloat(quantity),
         unit_price: parseFloat(unitPrice),
-        category: category
+        category: finalCategory
       }
     ])
     setLoading(false)
@@ -290,6 +307,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       setQuantity('')
       setUnitPrice('')
       setCategory('')
+      setCustomCategory('')
       fetchProjectData()
     }
   }
@@ -335,6 +353,14 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const grandTotalRab = rabItems.reduce((acc, item) => acc + (item.total_cost || 0), 0)
   const grandTotalActual = actualExpenses.reduce((acc, item) => acc + (item.amount || 0), 0)
   const budgetVariance = grandTotalRab - grandTotalActual
+
+  // Grouping Data RAB Berdasarkan Kategori
+  const groupedRabItems = rabItems.reduce((acc, item) => {
+    const cat = item.category || 'Pekerjaan Lain-lain'
+    if (!acc[cat]) acc[cat] = []
+    acc[cat].push(item)
+    return acc
+  }, {} as Record<string, RabItem[]>)
 
   if (!project) {
     return <div className="min-h-screen bg-slate-950 text-slate-100 p-12 flex items-center justify-center font-mono text-sm">Memuat data proyek...</div>
@@ -400,12 +426,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-extrabold tracking-tight text-white print:text-slate-900 print:text-2xl">{project.name}</h1>
-                  {/* Status disembunyikan HANYA untuk cetak penawaran klien, tetap muncul di laporan internal */}
                   <div className="[.print-client-mode_&]:hidden">{renderStatusBadge(project.status, project.end_date)}</div>
                 </div>
                 <p className="text-slate-400 text-sm mb-4 print:text-slate-700">{project.description || 'Tidak ada deskripsi'}</p>
                 
-                {/* Tanggal mulai/selesai disembunyikan HANYA untuk cetak penawaran klien, tetap muncul di laporan internal */}
                 <div className="[.print-client-mode_&]:hidden flex flex-wrap gap-6 text-xs text-slate-300 pt-3 border-t border-slate-800 print:border-slate-300 print:text-slate-700">
                   <span>Tanggal Mulai: <strong className="text-white print:text-slate-900 font-medium font-mono">{project.start_date || '-'}</strong></span>
                   <span>Tanggal Selesai: <strong className="text-white print:text-slate-900 font-medium font-mono">{project.end_date || '-'}</strong></span>
@@ -496,7 +520,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           )}
         </div>
 
-        {/* Kartu Analisis Ringkasan Finansial (BVA) - Ditata rapi sejajar 3 kolom */}
+        {/* Kartu Analisis Ringkasan Finansial (BVA) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="print-client-hide bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
             <span className="text-xs text-slate-400 block uppercase tracking-wider mb-1">Total Estimasi RAB (Penawaran)</span>
@@ -525,7 +549,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* Form Tambah Item RAB */}
+        {/* Form Tambah Item RAB dengan Kategori Custom Dinamis */}
         <form onSubmit={handleAddRab} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
           <h2 className="text-lg font-semibold mb-4 text-emerald-400 flex items-center gap-2">
             <span>+</span> Tambah Item RAB (Rencana)
@@ -537,20 +561,41 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Contoh: Kabel NYM 3x2.5"
+                placeholder="Contoh: Kabel NYM 3x2.5 / Cor Beton K-225"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Kategori</label>
-              <input
-                type="text"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Contoh: Material"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
-              />
+              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Sub-Kategori Pekerjaan</label>
+              <div className="space-y-2">
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value)
+                    if (e.target.value !== '__custom__') {
+                      setCustomCategory('')
+                    }
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+                >
+                  <option value="">-- Pilih atau Tambah Kategori --</option>
+                  {existingCategories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                  <option value="__custom__">+ Ketik Kategori Baru...</option>
+                </select>
+
+                {(category === '__custom__' || category === '') && (
+                  <input
+                    type="text"
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    placeholder="Ketik nama kategori baru..."
+                    className="w-full bg-slate-950 border border-emerald-800/80 rounded-lg px-3 py-2 text-xs text-emerald-400 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
+                  />
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Satuan (Unit)</label>
@@ -558,7 +603,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 type="text"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                placeholder="Contoh: Rol / Pcs"
+                placeholder="m3 / m2 / Pcs"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
               />
             </div>
@@ -597,7 +642,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </div>
         </form>
 
-        {/* Tabel Rincian RAB */}
+        {/* Tabel Rincian RAB Berkelompok Berdasarkan Sub-Kategori */}
         <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
           <div className="print:hidden mb-6 border-b border-slate-800 pb-4">
             <h2 className="text-lg font-semibold text-slate-200">Rincian Anggaran Biaya (RAB - Rencana)</h2>
@@ -614,125 +659,146 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider print:border-slate-900 print:text-slate-900">
-                    <th className="py-3 px-4">Item Pekerjaan</th>
-                    <th className="py-3 px-4">Kategori</th>
-                    <th className="py-3 px-4 text-right">Volume</th>
-                    <th className="py-3 px-4 text-right">Harga Satuan</th>
-                    <th className="py-3 px-4 text-right">Total Biaya</th>
-                    <th className="no-print py-3 px-4 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 print:divide-slate-300">
-                  {rabItems.map((item) => {
-                    const isEditing = editingRabId === item.id
+            <div className="space-y-6">
+              {Object.entries(groupedRabItems).map(([catName, items]) => {
+                const categorySubtotal = items.reduce((sum, i) => sum + (i.total_cost || 0), 0)
 
-                    return (
-                      <tr key={item.id} className="hover:bg-slate-800/40 transition">
-                        {isEditing ? (
-                          <>
-                            <td className="py-3 px-4">
-                              <input
-                                type="text"
-                                value={editRabName}
-                                onChange={(e) => setEditRabName(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
-                              />
-                              <input
-                                type="text"
-                                value={editRabUnit}
-                                onChange={(e) => setEditRabUnit(e.target.value)}
-                                placeholder="Satuan"
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-400 mt-1"
-                              />
-                            </td>
-                            <td className="py-3 px-4">
-                              <input
-                                type="text"
-                                value={editRabCategory}
-                                onChange={(e) => setEditRabCategory(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
-                              />
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              <input
-                                type="number"
-                                step="any"
-                                value={editRabQty}
-                                onChange={(e) => setEditRabQty(e.target.value)}
-                                className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
-                              />
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              <input
-                                type="number"
-                                value={editRabPrice}
-                                onChange={(e) => setEditRabPrice(e.target.value)}
-                                className="w-28 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
-                              />
-                            </td>
-                            <td className="py-3 px-4 text-emerald-400 font-mono text-right text-xs">
-                              Otomatis
-                            </td>
-                            <td className="no-print py-3 px-4 text-center space-x-1">
-                              <button
-                                onClick={() => handleUpdateRab(item.id)}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer"
-                              >
-                                Simpan
-                              </button>
-                              <button
-                                onClick={() => setEditingRabId(null)}
-                                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
-                              >
-                                Batal
-                              </button>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="py-4 px-4 font-medium text-slate-100 print:text-slate-900">
-                              {item.name} <span className="text-xs text-slate-500 block font-normal print:text-slate-600">({item.unit || 'unit'})</span>
-                            </td>
-                            <td className="py-4 px-4 text-slate-300 text-sm print:text-slate-800">{item.category || '-'}</td>
-                            <td className="py-4 px-4 text-slate-300 font-mono text-right print:text-slate-800">{item.quantity}</td>
-                            <td className="py-4 px-4 text-slate-300 font-mono text-sm text-right print:text-slate-800">
-                              Rp {Number(item.unit_price).toLocaleString('id-ID')}
-                            </td>
-                            <td className="py-4 px-4 text-emerald-400 font-mono font-semibold text-sm text-right print:text-slate-900">
-                              Rp {Number(item.total_cost).toLocaleString('id-ID')}
-                            </td>
-                            <td className="no-print py-4 px-4 text-center space-x-2">
-                              <button
-                                onClick={() => {
-                                  setEditingRabId(item.id)
-                                  setEditRabName(item.name)
-                                  setEditRabCategory(item.category || '')
-                                  setEditRabUnit(item.unit || '')
-                                  setEditRabQty(item.quantity.toString())
-                                  setEditRabPrice(item.unit_price.toString())
-                                }}
-                                className="text-sky-400 hover:text-sky-300 text-xs bg-sky-950/30 hover:bg-sky-950/60 border border-sky-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteRab(item.id)}
-                                className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
-                              >
-                                Hapus
-                              </button>
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                return (
+                  <div key={catName} className="border border-slate-800/80 rounded-xl overflow-hidden print:border-slate-400 mb-4">
+                    {/* Header Kategori Pekerjaan & Subtotal */}
+                    <div className="bg-slate-800/80 print:bg-slate-200 px-4 py-2.5 flex justify-between items-center border-b border-slate-700/60 print:border-slate-400">
+                      <h3 className="text-xs font-bold text-emerald-400 print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 print:bg-slate-800 inline-block"></span>
+                        {catName}
+                      </h3>
+                      <span className="text-xs font-mono font-bold text-slate-300 print:text-slate-900">
+                        Subtotal: Rp {categorySubtotal.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+
+                    {/* Tabel Item Kategori */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider print:border-slate-400 print:text-slate-900 bg-slate-950/40 print:bg-transparent">
+                            <th className="py-2.5 px-4">Item Pekerjaan</th>
+                            <th className="py-2.5 px-4 text-right">Volume</th>
+                            <th className="py-2.5 px-4 text-right">Harga Satuan</th>
+                            <th className="py-2.5 px-4 text-right">Total Biaya</th>
+                            <th className="no-print py-2.5 px-4 text-center">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 print:divide-slate-300">
+                          {items.map((item) => {
+                            const isEditing = editingRabId === item.id
+
+                            return (
+                              <tr key={item.id} className="hover:bg-slate-800/40 transition">
+                                {isEditing ? (
+                                  <>
+                                    <td className="py-3 px-4">
+                                      <input
+                                        type="text"
+                                        value={editRabName}
+                                        onChange={(e) => setEditRabName(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 mb-1"
+                                      />
+                                      <div className="flex gap-2">
+                                        <input
+                                          type="text"
+                                          value={editRabCategory}
+                                          onChange={(e) => setEditRabCategory(e.target.value)}
+                                          placeholder="Kategori"
+                                          className="w-36 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-300"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={editRabUnit}
+                                          onChange={(e) => setEditRabUnit(e.target.value)}
+                                          placeholder="Satuan"
+                                          className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-400"
+                                        />
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-4 text-right">
+                                      <input
+                                        type="number"
+                                        step="any"
+                                        value={editRabQty}
+                                        onChange={(e) => setEditRabQty(e.target.value)}
+                                        className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                                      />
+                                    </td>
+                                    <td className="py-3 px-4 text-right">
+                                      <input
+                                        type="number"
+                                        value={editRabPrice}
+                                        onChange={(e) => setEditRabPrice(e.target.value)}
+                                        className="w-28 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                                      />
+                                    </td>
+                                    <td className="py-3 px-4 text-emerald-400 font-mono text-right text-xs">
+                                      Otomatis
+                                    </td>
+                                    <td className="no-print py-3 px-4 text-center space-x-1">
+                                      <button
+                                        onClick={() => handleUpdateRab(item.id)}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer"
+                                      >
+                                        Simpan
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingRabId(null)}
+                                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
+                                      >
+                                        Batal
+                                      </button>
+                                    </td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td className="py-3 px-4 font-medium text-slate-100 print:text-slate-900">
+                                      {item.name} <span className="text-xs text-slate-500 block font-normal print:text-slate-600">({item.unit || 'unit'})</span>
+                                    </td>
+                                    <td className="py-3 px-4 text-slate-300 font-mono text-right print:text-slate-800">{item.quantity}</td>
+                                    <td className="py-3 px-4 text-slate-300 font-mono text-sm text-right print:text-slate-800">
+                                      Rp {Number(item.unit_price).toLocaleString('id-ID')}
+                                    </td>
+                                    <td className="py-3 px-4 text-emerald-400 font-mono font-semibold text-sm text-right print:text-slate-900">
+                                      Rp {Number(item.total_cost).toLocaleString('id-ID')}
+                                    </td>
+                                    <td className="no-print py-3 px-4 text-center space-x-2">
+                                      <button
+                                        onClick={() => {
+                                          setEditingRabId(item.id)
+                                          setEditRabName(item.name)
+                                          setEditRabCategory(item.category || 'Pekerjaan Lain-lain')
+                                          setEditRabUnit(item.unit || '')
+                                          setEditRabQty(item.quantity.toString())
+                                          setEditRabPrice(item.unit_price.toString())
+                                        }}
+                                        className="text-sky-400 hover:text-sky-300 text-xs bg-sky-950/30 hover:bg-sky-950/60 border border-sky-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteRab(item.id)}
+                                        className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                                      >
+                                        Hapus
+                                      </button>
+                                    </td>
+                                  </>
+                                )}
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              })}
 
               {/* TOTAL ESTIMASI DI BAWAH TABEL KHUSUS CETAK */}
               <div className="hidden print:flex justify-end mt-4 pt-3 border-t-2 border-slate-900 text-sm">
@@ -745,7 +811,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           )}
         </div>
 
-        {/* Form Tambah Biaya Aktual - Disembunyikan HANYA saat mode cetak penawaran klien */}
+        {/* Form Tambah Biaya Aktual */}
         <div className="print-client-hide">
           <form onSubmit={handleAddExpense} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
             <h2 className="text-lg font-semibold mb-4 text-sky-400 flex items-center gap-2">
