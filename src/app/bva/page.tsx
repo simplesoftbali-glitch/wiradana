@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { exportToExcel } from '../../lib/exportUtils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -90,6 +91,31 @@ export default function BvaAnalysisPage() {
   const globalVariance = globalRab - globalActual
   const globalPercentage = globalRab > 0 ? (globalActual / globalRab) * 100 : 0
 
+  function formatCurrency(value: number) {
+    return `Rp ${Number(value || 0).toLocaleString('id-ID')}`
+  }
+
+  function handleExportExcel() {
+    try {
+      exportToExcel('rekap-bva', [
+        {
+          sheetName: 'Rekap BVA',
+          data: projectSummaries.map((item) => ({
+            'Nama Proyek': item.name,
+            'Tanggal Mulai': item.startDate,
+            'Tanggal Selesai': item.endDate,
+            Status: item.status,
+            RAB: formatCurrency(item.totalRab),
+            Aktual: formatCurrency(item.totalActual),
+            'Selisih (Varians)': formatCurrency(item.variance),
+          })),
+        },
+      ])
+    } catch (error) {
+      alert(`Gagal mengekspor rekap BVA: ${error instanceof Error ? error.message : 'Terjadi kesalahan.'}`)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 p-12 flex items-center justify-center font-mono text-sm">
@@ -112,6 +138,12 @@ export default function BvaAnalysisPage() {
             className="no-print bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
           >
             🖨️ Cetak Laporan BVA
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="no-print bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5"
+          >
+            📥 Ekspor Rekap BVA (Excel)
           </button>
         </div>
 

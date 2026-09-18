@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { exportToExcel } from '../../../lib/exportUtils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -358,6 +359,39 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const grandTotalActual = actualExpenses.reduce((acc, item) => acc + (item.amount || 0), 0)
   const budgetVariance = grandTotalRab - grandTotalActual
 
+  function formatCurrency(value: number) {
+    return `Rp ${Number(value || 0).toLocaleString('id-ID')}`
+  }
+
+  function handleExportExcel() {
+    try {
+      exportToExcel(`${project?.name || 'proyek'}-laporan`, [
+        {
+          sheetName: 'RAB Rencana',
+          data: rabItems.map((item) => ({
+            Kategori: item.category || 'Pekerjaan Lain-lain',
+            'Item Pekerjaan': item.name,
+            Satuan: item.unit || 'unit',
+            Volume: item.quantity,
+            'Harga Satuan': formatCurrency(item.unit_price),
+            'Total Biaya': formatCurrency(item.total_cost),
+          })),
+        },
+        {
+          sheetName: 'Pengeluaran Aktual',
+          data: actualExpenses.map((expense) => ({
+            Tanggal: expense.date,
+            Keterangan: expense.name,
+            Kategori: expense.category || '-',
+            Jumlah: formatCurrency(expense.amount),
+          })),
+        },
+      ])
+    } catch (error) {
+      alert(`Gagal mengekspor laporan Excel: ${error instanceof Error ? error.message : 'Terjadi kesalahan.'}`)
+    }
+  }
+
   // Grouping Data RAB Berdasarkan Kategori
   const groupedRabItems = rabItems.reduce((acc, item) => {
     const cat = item.category || 'Pekerjaan Lain-lain'
@@ -387,6 +421,12 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
             >
               🖨️ Cetak Laporan Internal
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+            >
+              📥 Ekspor Excel
             </button>
             <button
               onClick={() => {
