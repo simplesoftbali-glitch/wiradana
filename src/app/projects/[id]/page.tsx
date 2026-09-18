@@ -110,7 +110,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     ])
   )
 
-  // Fungsi helper untuk mengevaluasi status efektif
+  /**
+   * Mengevaluasi status efektif dari sebuah proyek.
+   * Mendeteksi status 'Overdue' jika end_date melewati hari ini dan status belum Closed/On Hold.
+   */
   function getEffectiveStatus(proj: { status: string; end_date?: string } | null) {
     if (!proj) return 'Scheduled'
     if (proj.status === 'Closed' || proj.status === 'On Hold') {
