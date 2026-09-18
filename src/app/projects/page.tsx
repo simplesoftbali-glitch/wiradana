@@ -24,6 +24,8 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('All')
 
   // Fungsi helper untuk mengevaluasi status efektif (deteksi otomatis Overdue)
   function getEffectiveStatus(project: { status: string; end_date?: string }) {
@@ -132,6 +134,17 @@ export default function ProjectsPage() {
     }
   }
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const filteredProjects = projects.filter((project) => {
+    const matchesSearch = !normalizedSearchQuery ||
+      project.name.toLowerCase().includes(normalizedSearchQuery) ||
+      (project.description || '').toLowerCase().includes(normalizedSearchQuery)
+    const matchesStatus = statusFilter === 'All' ||
+      getEffectiveStatus(project) === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
   return (
     <div className="w-full">
       <main className="max-w-5xl mx-auto space-y-8">
@@ -219,6 +232,40 @@ export default function ProjectsPage() {
         {/* Daftar Proyek Aktif */}
         <section className="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-6 shadow-xl">
           <h2 className="text-lg font-semibold mb-4 text-slate-200">Daftar Proyek Aktif</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 mb-6">
+            <div>
+              <label htmlFor="project-search" className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">
+                Cari Proyek
+              </label>
+              <input
+                id="project-search"
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari berdasarkan nama atau deskripsi..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
+              />
+            </div>
+            <div className="md:min-w-48">
+              <label htmlFor="project-status-filter" className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">
+                Filter Status
+              </label>
+              <select
+                id="project-status-filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+              >
+                <option value="All">Semua Status</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="On Track">On Track</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Overdue">Overdue</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </div>
+          </div>
           
           {fetching ? (
             <div className="text-center py-12 text-slate-500 font-mono text-xs">Memuat daftar proyek...</div>
@@ -230,6 +277,16 @@ export default function ProjectsPage() {
               <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Proyek</h3>
               <p className="text-slate-500 text-xs max-w-sm mx-auto">
                 Mulai buat proyek pertama Anda menggunakan formulir di atas untuk mengelola RAB dan pengeluaran secara terstruktur.
+              </p>
+            </div>
+          ) : filteredProjects.length === 0 ? (
+            <div className="text-center py-16 px-6 border border-dashed border-slate-800 rounded-2xl bg-slate-950/40">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 text-xl font-mono">
+                🔍
+              </div>
+              <h3 className="text-slate-200 font-semibold text-sm mb-1">Proyek Tidak Ditemukan</h3>
+              <p className="text-slate-500 text-xs max-w-sm mx-auto">
+                Tidak ada proyek yang sesuai dengan pencarian atau filter status yang dipilih.
               </p>
             </div>
           ) : (
@@ -245,7 +302,7 @@ export default function ProjectsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {projects.map((p) => (
+                  {filteredProjects.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-800/40 transition group">
                       <td className="py-4 px-4 font-medium">
                         <Link href={`/projects/${p.id}`} className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5">
