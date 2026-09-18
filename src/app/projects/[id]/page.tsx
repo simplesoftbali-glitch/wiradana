@@ -111,8 +111,9 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   )
 
   /**
-   * Mengevaluasi status efektif dari sebuah proyek.
-   * Mendeteksi status 'Overdue' jika end_date melewati hari ini dan status belum Closed/On Hold.
+   * Evaluates the effective status of a project considering overdue dates.
+   * @param proj - The project object containing status and optional end date.
+   * @returns Effective status string.
    */
   function getEffectiveStatus(proj: { status: string; end_date?: string } | null) {
     if (!proj) return 'Scheduled'
