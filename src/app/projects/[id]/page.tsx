@@ -31,6 +31,7 @@ interface ActualExpense {
   name: string
   category: string
   amount: number
+  receipt_url: string | null
 }
 
 interface CompanyProfile {
@@ -102,6 +103,8 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [expCategory, setExpCategory] = useState('')
   const [expAmount, setExpAmount] = useState('')
   const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0])
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   // Menggabungkan saran bawaan dan kategori yang sudah ada di proyek secara unik
   const existingCategories = Array.from(
@@ -322,24 +325,56 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     if (!expName || !expAmount) return alert('Keterangan dan Jumlah Biaya wajib diisi!')
 
     setLoadingExpense(true)
-    const { error } = await supabase.from('actual_expenses').insert([
-      {
-        project_id: projectId,
-        name: expName,
-        category: expCategory,
-        amount: parseFloat(expAmount),
-        date: expDate
-      }
-    ])
-    setLoadingExpense(false)
+    let receiptUrl: string | null = null
 
-    if (error) {
-      alert('Gagal menyimpan pengeluaran: ' + error.message)
-    } else {
+    try {
+      if (receiptFile) {
+        if (!receiptFile.type.startsWith('image/')) {
+          alert('Berkas nota harus berupa gambar.')
+          return
+        }
+
+        setUploading(true)
+        const filePath = `receipt_${Date.now()}_${receiptFile.name}`
+        const { error: uploadError } = await supabase.storage
+          .from('receipts')
+          .upload(filePath, receiptFile)
+
+        if (uploadError) {
+          throw new Error('Gagal mengunggah nota: ' + uploadError.message)
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('receipts')
+          .getPublicUrl(filePath)
+        receiptUrl = publicUrlData.publicUrl
+      }
+
+      const { error } = await supabase.from('actual_expenses').insert([
+        {
+          project_id: projectId,
+          name: expName,
+          category: expCategory,
+          amount: parseFloat(expAmount),
+          date: expDate,
+          receipt_url: receiptUrl
+        }
+      ])
+
+      if (error) {
+        throw new Error('Gagal menyimpan pengeluaran: ' + error.message)
+      }
+
       setExpName('')
       setExpCategory('')
       setExpAmount('')
+      setReceiptFile(null)
       fetchProjectData()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Gagal menyimpan pengeluaran.')
+    } finally {
+      setUploading(false)
+      setLoadingExpense(false)
     }
   }
 
@@ -904,14 +939,26 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   required
                 />
               </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Nota / Bukti Kuitansi</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-300 file:mr-3 file:border-0 file:bg-emerald-950 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-emerald-400 hover:file:bg-emerald-900 focus:outline-none focus:border-emerald-500 transition"
+                />
+                {receiptFile && (
+                  <p className="mt-1 text-xs text-slate-500 truncate">Dipilih: {receiptFile.name}</p>
+                )}
+              </div>
             </div>
             <div className="flex justify-end pt-2">
               <button
                 type="submit"
-                disabled={loadingExpense}
+                disabled={loadingExpense || uploading}
                 className="bg-sky-600 hover:bg-sky-500 text-slate-950 font-bold px-6 py-2.5 rounded-lg text-sm transition shadow-lg cursor-pointer disabled:opacity-50"
               >
-                {loadingExpense ? 'Menyimpan...' : 'Simpan Pengeluaran'}
+                {uploading ? 'Mengunggah Nota...' : loadingExpense ? 'Menyimpan...' : 'Simpan Pengeluaran'}
               </button>
             </div>
           </form>
@@ -941,6 +988,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                       <th className="py-3 px-4">Keterangan</th>
                       <th className="py-3 px-4">Kategori</th>
                       <th className="py-3 px-4 text-right">Biaya Aktual</th>
+                      <th className="no-print py-3 px-4 text-center">Nota</th>
                       <th className="no-print py-3 px-4 text-center">Aksi</th>
                     </tr>
                   </thead>
@@ -984,6 +1032,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                   className="w-32 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
                                 />
                               </td>
+                              <td className="no-print py-3 px-4 text-center">-</td>
                               <td className="no-print py-3 px-4 text-center space-x-1">
                                 <button
                                   onClick={() => handleUpdateExpense(exp.id)}
@@ -1006,6 +1055,20 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                               <td className="py-4 px-4 text-slate-300 text-sm print:text-slate-800">{exp.category || '-'}</td>
                               <td className="py-4 px-4 text-sky-400 font-mono font-semibold text-sm text-right print:text-slate-900">
                                 Rp {Number(exp.amount).toLocaleString('id-ID')}
+                              </td>
+                              <td className="no-print py-4 px-4 text-center">
+                                {exp.receipt_url ? (
+                                  <a
+                                    href={exp.receipt_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-emerald-400 hover:text-emerald-300 text-xs font-semibold whitespace-nowrap"
+                                  >
+                                    👁️ Lihat Nota
+                                  </a>
+                                ) : (
+                                  <span className="text-slate-600 text-xs">-</span>
+                                )}
                               </td>
                               <td className="no-print py-4 px-4 text-center space-x-2">
                                 <button
