@@ -393,6 +393,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const grandTotalRab = rabItems.reduce((acc, item) => acc + (item.total_cost || 0), 0)
   const grandTotalActual = actualExpenses.reduce((acc, item) => acc + (item.amount || 0), 0)
   const budgetVariance = grandTotalRab - grandTotalActual
+  const efficiencyPercentage = grandTotalRab > 0
+    ? (budgetVariance / grandTotalRab) * 100
+    : grandTotalActual > 0 ? -100 : 0
+  const isFinanciallyOnTrack = efficiencyPercentage >= 0
 
   function formatCurrency(value: number) {
     return `Rp ${Number(value || 0).toLocaleString('id-ID')}`
@@ -599,31 +603,38 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           )}
         </div>
 
-        {/* Kartu Analisis Ringkasan Finansial (BVA) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="print-client-hide bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-            <span className="text-xs text-slate-400 block uppercase tracking-wider mb-1">Total Estimasi RAB (Penawaran)</span>
-            <span className="text-xl font-extrabold text-emerald-400 font-mono mt-2">
+        {/* Kartu Ringkasan Arus Kas & Proyeksi Profit */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+          <div className="print-client-hide bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-col justify-between min-h-28">
+            <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Total Anggaran RAB</span>
+            <span className="text-lg font-extrabold text-emerald-400 font-mono mt-3">
               Rp {grandTotalRab.toLocaleString('id-ID')}
             </span>
           </div>
 
-          <div className="print-client-hide bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-            <span className="text-xs text-slate-400 block uppercase tracking-wider mb-1">Total Realisasi Aktual</span>
-            <span className="text-xl font-extrabold text-sky-400 font-mono mt-2">
+          <div className="print-client-hide bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-col justify-between min-h-28">
+            <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Total Pengeluaran Aktual</span>
+            <span className="text-lg font-extrabold text-sky-400 font-mono mt-3">
               Rp {grandTotalActual.toLocaleString('id-ID')}
             </span>
           </div>
 
-          <div className={`print-client-hide bg-slate-900/80 border p-5 rounded-2xl shadow-xl flex flex-col justify-between ${budgetVariance >= 0 ? 'border-emerald-500/30' : 'border-red-500/50 bg-red-950/10'}`}>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-400 uppercase tracking-wider">Status Anggaran</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${budgetVariance >= 0 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800 animate-pulse'}`}>
-                {budgetVariance >= 0 ? 'Aman / Sisa' : 'Overbudget!'}
+          <div className={`print-client-hide border p-4 rounded-2xl shadow-xl flex flex-col justify-between min-h-28 ${isFinanciallyOnTrack ? 'bg-slate-900/80 border-emerald-500/30' : 'bg-red-950/10 border-red-500/50'}`}>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Sisa Anggaran</span>
+            <span className={`text-lg font-extrabold font-mono mt-3 ${isFinanciallyOnTrack ? 'text-emerald-400' : 'text-red-400'}`}>
+              {budgetVariance < 0 ? '-' : ''}Rp {Math.abs(budgetVariance).toLocaleString('id-ID')}
+            </span>
+          </div>
+
+          <div className={`print-client-hide border p-4 rounded-2xl shadow-xl flex flex-col justify-between min-h-28 ${isFinanciallyOnTrack ? 'bg-slate-900/80 border-emerald-500/30' : 'bg-red-950/10 border-red-500/50'}`}>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider">Efisiensi / Proyeksi Profit</span>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase whitespace-nowrap ${isFinanciallyOnTrack ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800 animate-pulse'}`}>
+                {isFinanciallyOnTrack ? 'On Track' : 'Overbudget Alert'}
               </span>
             </div>
-            <span className={`text-xl font-extrabold font-mono mt-2 ${budgetVariance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              Rp {Math.abs(budgetVariance).toLocaleString('id-ID')} <span className="text-sm font-semibold">{budgetVariance < 0 ? 'Defisit' : 'Sisa'}</span>
+            <span className={`text-lg font-extrabold font-mono mt-3 ${isFinanciallyOnTrack ? 'text-emerald-400' : 'text-red-400'}`}>
+              {efficiencyPercentage.toFixed(2)}%
             </span>
           </div>
         </div>
