@@ -43,7 +43,6 @@ interface CompanyProfile {
   footer_note: string
 }
 
-// Rekomendasi Sub-Kategori Standar Konstruksi
 const DEFAULT_SUGGESTIONS = [
   'Pekerjaan Persiapan',
   'Pekerjaan Pondasi & Struktur',
@@ -66,12 +65,14 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(false)
   const [loadingExpense, setLoadingExpense] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  // State Modal Impor CSV
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
 
-  // State untuk Mode Edit Proyek
+  // State Edit Proyek
   const [isEditingProject, setIsEditingProject] = useState(false)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -79,7 +80,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [editEndDate, setEditEndDate] = useState('')
   const [editStatus, setEditStatus] = useState('Scheduled')
 
-  // State untuk Mode Edit RAB Item
+  // State Edit RAB Item
   const [editingRabId, setEditingRabId] = useState<string | null>(null)
   const [editRabName, setEditRabName] = useState('')
   const [editRabCategory, setEditRabCategory] = useState('')
@@ -87,14 +88,14 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [editRabQty, setEditRabQty] = useState('')
   const [editRabPrice, setEditRabPrice] = useState('')
 
-  // State untuk Mode Edit Pengeluaran Aktual
+  // State Edit Pengeluaran
   const [editingExpId, setEditingExpId] = useState<string | null>(null)
   const [editExpDate, setEditExpDate] = useState('')
   const [editExpName, setEditExpName] = useState('')
   const [editExpCategory, setEditExpCategory] = useState('')
   const [editExpAmount, setEditExpAmount] = useState('')
 
-  // Form State untuk RAB Item baru (Dinamis / Custom Kategori)
+  // Form State RAB Item Baru
   const [name, setName] = useState('')
   const [unit, setUnit] = useState('')
   const [quantity, setQuantity] = useState('')
@@ -102,7 +103,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [category, setCategory] = useState('')
   const [customCategory, setCustomCategory] = useState('')
 
-  // Form State untuk Biaya Aktual baru
+  // Form State Biaya Aktual
   const [expName, setExpName] = useState('')
   const [expCategory, setExpCategory] = useState('')
   const [expAmount, setExpAmount] = useState('')
@@ -110,7 +111,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
-  // Menggabungkan saran bawaan dan kategori yang sudah ada di proyek secara unik
   const existingCategories = Array.from(
     new Set([
       ...DEFAULT_SUGGESTIONS,
@@ -118,11 +118,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     ])
   )
 
-  /**
-   * Evaluates the effective status of a project considering overdue dates.
-   * @param proj - The project object containing status and optional end date.
-   * @returns Effective status string.
-   */
   function getEffectiveStatus(proj: { status: string; end_date?: string } | null) {
     if (!proj) return 'Scheduled'
     if (proj.status === 'Closed' || proj.status === 'On Hold') {
@@ -139,7 +134,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     return proj.status || 'Scheduled'
   }
 
-  // Komponen Helper untuk Badge Status
   function renderStatusBadge(rawStatus: string, endDate: string) {
     const effectiveStatus = getEffectiveStatus({ status: rawStatus, end_date: endDate })
 
@@ -290,6 +284,124 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     }
   }
 
+  // --- Fungsi Pembantu Impor CSV ---
+  function parseCsvLine(line: string) {
+    const values: string[] = []
+    let value = ''
+    let isQuoted = false
+
+    for (let index = 0; index < line.length; index += 1) {
+      const character = line[index]
+      if (character === '"') {
+        if (isQuoted && line[index + 1] === '"') {
+          value += '"'
+          index += 1
+        } else {
+          isQuoted = !isQuoted
+        }
+      } else if (character === ',' && !isQuoted) {
+        values.push(value.trim())
+        value = ''
+      } else {
+        value += character
+      }
+    }
+
+    values.push(value.trim())
+    return values
+  }
+
+  function parseImportNumber(value: string, fieldName: string, rowNumber: number) {
+    const compactValue = value.trim().replace(/\s/g, '')
+    const lastCommaIndex = compactValue.lastIndexOf(',')
+    const lastDotIndex = compactValue.lastIndexOf('.')
+    let normalizedValue = compactValue
+
+    if (lastCommaIndex >= 0 && lastDotIndex >= 0) {
+      normalizedValue = lastCommaIndex > lastDotIndex
+        ? compactValue.replace(/\./g, '').replace(',', '.')
+        : compactValue.replace(/,/g, '')
+    } else if ((compactValue.match(/\./g) || []).length > 1) {
+      normalizedValue = compactValue.replace(/\./g, '')
+    } else {
+      normalizedValue = compactValue.replace(',', '.')
+    }
+
+    const parsedValue = Number(normalizedValue)
+
+    if (!normalizedValue || !Number.isFinite(parsedValue) || parsedValue < 0) {
+      throw new Error(`${fieldName} pada baris ${rowNumber} harus berupa angka valid.`)
+    }
+
+    return parsedValue
+  }
+
+  function handleDownloadTemplate() {
+    const blob = new Blob(['name,category,quantity,unit,unit_price\n'], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'template-rab.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleImportRab(e: React.FormEvent) {
+    e.preventDefault()
+    if (!importFile) {
+      setImportError('Pilih berkas CSV terlebih dahulu.')
+      return
+    }
+
+    setImporting(true)
+    setImportError('')
+
+    try {
+      const content = await importFile.text()
+      const lines = content.split(/\r?\n/).filter((line) => line.trim())
+      if (lines.length < 2) {
+        throw new Error('Berkas CSV harus berisi header dan minimal satu baris data.')
+      }
+
+      const headers = parseCsvLine(lines[0]).map((header) => header.replace(/^\uFEFF/, '').toLowerCase())
+      const expectedHeaders = ['name', 'category', 'quantity', 'unit', 'unit_price']
+      if (!expectedHeaders.every((header, index) => headers[index] === header)) {
+        throw new Error('Header CSV harus berurutan: name,category,quantity,unit,unit_price.')
+      }
+
+      const items = lines.slice(1).map((line, index) => {
+        const rowNumber = index + 2
+        const [itemName, itemCategory, itemQuantity, itemUnit, itemPrice] = parseCsvLine(line)
+        if (!itemName?.trim()) {
+          throw new Error(`Nama item pada baris ${rowNumber} wajib diisi.`)
+        }
+
+        return {
+          project_id: projectId,
+          name: itemName.trim(),
+          category: itemCategory?.trim() || 'Pekerjaan Lain-lain',
+          quantity: parseImportNumber(itemQuantity, 'Quantity', rowNumber),
+          unit: itemUnit?.trim() || 'unit',
+          unit_price: parseImportNumber(itemPrice, 'Unit price', rowNumber),
+        }
+      })
+
+      const { error } = await supabase.from('rab_items').insert(items)
+      if (error) {
+        throw new Error(`Gagal mengimpor RAB: ${error.message}`)
+      }
+
+      setIsImportModalOpen(false)
+      setImportFile(null)
+      await fetchProjectData()
+      alert(`${items.length} item RAB berhasil diimpor.`)
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Gagal memproses berkas CSV.')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   async function handleAddRab(e: React.FormEvent) {
     e.preventDefault()
     if (!name || !quantity || !unitPrice) return alert('Nama, Volume, dan Harga Satuan wajib diisi!')
@@ -307,123 +419,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         quantity: parseFloat(quantity),
         unit_price: parseFloat(unitPrice),
         category: finalCategory
-      }
-
-      function parseCsvLine(line: string) {
-        const values: string[] = []
-        let value = ''
-        let isQuoted = false
-
-        for (let index = 0; index < line.length; index += 1) {
-          const character = line[index]
-          if (character === '"') {
-            if (isQuoted && line[index + 1] === '"') {
-              value += '"'
-              index += 1
-            } else {
-              isQuoted = !isQuoted
-            }
-          } else if (character === ',' && !isQuoted) {
-            values.push(value.trim())
-            value = ''
-          } else {
-            value += character
-          }
-        }
-
-        values.push(value.trim())
-        return values
-      }
-
-      function parseImportNumber(value: string, fieldName: string, rowNumber: number) {
-        const compactValue = value.trim().replace(/\s/g, '')
-        const lastCommaIndex = compactValue.lastIndexOf(',')
-        const lastDotIndex = compactValue.lastIndexOf('.')
-        let normalizedValue = compactValue
-
-        if (lastCommaIndex >= 0 && lastDotIndex >= 0) {
-          normalizedValue = lastCommaIndex > lastDotIndex
-            ? compactValue.replace(/\./g, '').replace(',', '.')
-            : compactValue.replace(/,/g, '')
-        } else if ((compactValue.match(/\./g) || []).length > 1) {
-          normalizedValue = compactValue.replace(/\./g, '')
-        } else {
-          normalizedValue = compactValue.replace(',', '.')
-        }
-
-        const parsedValue = Number(normalizedValue)
-
-        if (!normalizedValue || !Number.isFinite(parsedValue) || parsedValue < 0) {
-          throw new Error(`${fieldName} pada baris ${rowNumber} harus berupa angka valid.`)
-        }
-
-        return parsedValue
-      }
-
-      function handleDownloadTemplate() {
-        const blob = new Blob(['name,category,quantity,unit,unit_price\n'], { type: 'text/csv;charset=utf-8;' })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = 'template-rab.csv'
-        link.click()
-        URL.revokeObjectURL(url)
-      }
-
-      async function handleImportRab(e: React.FormEvent) {
-        e.preventDefault()
-        if (!importFile) {
-          setImportError('Pilih berkas CSV terlebih dahulu.')
-          return
-        }
-
-        setImporting(true)
-        setImportError('')
-
-        try {
-          const content = await importFile.text()
-          const lines = content.split(/\r?\n/).filter((line) => line.trim())
-          if (lines.length < 2) {
-            throw new Error('Berkas CSV harus berisi header dan minimal satu baris data.')
-          }
-
-          const headers = parseCsvLine(lines[0]).map((header) => header.replace(/^\uFEFF/, '').toLowerCase())
-          const expectedHeaders = ['name', 'category', 'quantity', 'unit', 'unit_price']
-          if (!expectedHeaders.every((header, index) => headers[index] === header)) {
-            throw new Error('Header CSV harus berurutan: name,category,quantity,unit,unit_price.')
-          }
-
-          const items = lines.slice(1).map((line, index) => {
-            const rowNumber = index + 2
-            const [itemName, itemCategory, itemQuantity, itemUnit, itemPrice] = parseCsvLine(line)
-            if (!itemName?.trim()) {
-              throw new Error(`Nama item pada baris ${rowNumber} wajib diisi.`)
-            }
-
-            return {
-              project_id: projectId,
-              name: itemName.trim(),
-              category: itemCategory?.trim() || 'Pekerjaan Lain-lain',
-              quantity: parseImportNumber(itemQuantity, 'Quantity', rowNumber),
-              unit: itemUnit?.trim() || 'unit',
-              unit_price: parseImportNumber(itemPrice, 'Unit price', rowNumber),
-            }
-          })
-
-          const { error } = await supabase.from('rab_items').insert(items)
-          if (error) {
-            throw new Error(`Gagal mengimpor RAB: ${error.message}`)
-          }
-
-          setIsImportModalOpen(false)
-          setImportFile(null)
-          await fetchProjectData()
-          alert(`${items.length} item RAB berhasil diimpor.`)
-        } catch (error) {
-          setImportError(error instanceof Error ? error.message : 'Gagal memproses berkas CSV.')
-        } finally {
-          setImporting(false)
-        }
       }
     ])
     setLoading(false)
@@ -552,7 +547,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     }
   }
 
-  // Grouping Data RAB Berdasarkan Kategori
   const groupedRabItems = rabItems.reduce((acc, item) => {
     const cat = item.category || 'Pekerjaan Lain-lain'
     if (!acc[cat]) acc[cat] = []
@@ -603,7 +597,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* KOP SURAT CUSTOM (Hanya muncul saat dicetak) */}
+        {/* KOP SURAT CUSTOM */}
         <div className="hidden print:block border-b-2 border-slate-900 pb-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
@@ -623,7 +617,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* Header Proyek & Fitur Edit Proyek */}
+        {/* Header Proyek */}
         <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl print:border-none print:p-0 print:mb-4 print:shadow-none">
           {!isEditingProject ? (
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -724,7 +718,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           )}
         </div>
 
-        {/* Kartu Ringkasan Arus Kas & Proyeksi Profit */}
+        {/* Ringkasan Arus Kas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
           <div className="print-client-hide bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-col justify-between min-h-28">
             <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Total Anggaran RAB</span>
@@ -760,7 +754,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* Form Tambah Item RAB dengan Kategori Custom Dinamis */}
+        {/* Form Tambah Item RAB */}
         <form onSubmit={handleAddRab} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
           <h2 className="text-lg font-semibold mb-4 text-emerald-400 flex items-center gap-2">
             <span>+</span> Tambah Item RAB (Rencana)
@@ -853,7 +847,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </div>
         </form>
 
-        {/* Tabel Rincian RAB Berkelompok Berdasarkan Sub-Kategori */}
+        {/* Tabel RAB & Tombol Impor CSV */}
         <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
           <div className="print:hidden mb-6 border-b border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <h2 className="text-lg font-semibold text-slate-200">Rincian Anggaran Biaya (RAB - Rencana)</h2>
@@ -876,8 +870,8 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 📋
               </div>
               <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Item RAB</h3>
-              <p className="text-slate-500 text-xs max-w-xs mx-auto">
-                Tambahkan rincian rencana pekerjaan, volume, dan harga satuan melalui form di atas.
+              <p className="text-slate-500 text-xs max-w-xs mx-auto mb-4">
+                Tambahkan rincian rencana pekerjaan, volume, dan harga satuan melalui form di atas atau impor massal melalui file CSV.
               </p>
             </div>
           ) : (
@@ -887,7 +881,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
                 return (
                   <div key={catName} className="border border-slate-800/80 rounded-xl overflow-hidden print:border-slate-400 mb-4">
-                    {/* Header Kategori Pekerjaan & Subtotal */}
                     <div className="bg-slate-800/80 print:bg-slate-200 px-4 py-2.5 flex justify-between items-center border-b border-slate-700/60 print:border-slate-400">
                       <h3 className="text-xs font-bold text-emerald-400 print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 print:bg-slate-800 inline-block"></span>
@@ -898,7 +891,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                       </span>
                     </div>
 
-                    {/* Tabel Item Kategori */}
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
@@ -1022,7 +1014,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 )
               })}
 
-              {/* TOTAL ESTIMASI DI BAWAH TABEL KHUSUS CETAK */}
               <div className="hidden print:flex justify-end mt-4 pt-3 border-t-2 border-slate-900 text-sm">
                 <div className="text-right">
                   <span className="text-slate-700 mr-6 uppercase text-xs font-bold tracking-wider">TOTAL ESTIMASI NILAI RAB:</span>
@@ -1245,7 +1236,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* CATATAN KAKI & TANDA TANGAN DOKUMEN (Hanya muncul saat dicetak) */}
+        {/* CATATAN KAKI (Cetak) */}
         <div className="hidden print:block mt-8 pt-4 border-t border-slate-300 text-xs text-slate-600 space-y-6">
           {companyProfile?.footer_note && (
             <p><strong>Catatan & Ketentuan:</strong> {companyProfile.footer_note}</p>
@@ -1257,9 +1248,9 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               <p className="font-bold underline text-slate-900">{companyProfile?.company_name || 'WiraDana Contractor'}</p>
             </div>
           </div>
-
         </div>
 
+        {/* MODAL DIALOG IMPOR CSV */}
         {isImportModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
             <div role="dialog" aria-modal="true" aria-labelledby="import-rab-title" className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
