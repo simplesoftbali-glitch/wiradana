@@ -62,6 +62,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [rabItems, setRabItems] = useState<RabItem[]>([])
   const [actualExpenses, setActualExpenses] = useState<ActualExpense[]>([])
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
+  const [activeTab, setActiveTab] = useState<'rab' | 'actual' | 'overview'>('rab')
   const [loading, setLoading] = useState(false)
   const [loadingExpense, setLoadingExpense] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -566,7 +567,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             &larr; Kembali ke Daftar Proyek
           </Link>
           
-          <div className="no-print flex items-center gap-2">
+          <div className="no-print flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 p-1.5 shadow-lg">
             <button
               onClick={() => {
                 document.body.classList.remove('print-client-mode')
@@ -765,8 +766,38 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* Form Tambah Item RAB */}
-        <form onSubmit={handleAddRab} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
+        {/* Navigasi modul keuangan */}
+        <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-1.5 shadow-xl print:hidden">
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('rab')}
+              className={`rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
+                activeTab === 'rab'
+                  ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-950/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+              }`}
+            >
+              📋 Rencana Anggaran (RAB)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('actual')}
+              className={`rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
+                activeTab === 'actual'
+                  ? 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-950/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+              }`}
+            >
+              💸 Pengeluaran Lapangan (Aktual)
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'rab' && (
+          <div>
+            {/* Form Tambah Item RAB dengan Kategori Custom Dinamis */}
+            <form onSubmit={handleAddRab} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
           <h2 className="text-lg font-semibold mb-4 text-emerald-400 flex items-center gap-2">
             <span>+</span> Tambah Item RAB (Rencana)
           </h2>
@@ -856,10 +887,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               {loading ? 'Menyimpan...' : 'Tambah ke RAB'}
             </button>
           </div>
-        </form>
+            </form>
 
-        {/* Tabel RAB & Tombol Impor CSV */}
-        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
+            {/* Tabel Rincian RAB Berkelompok Berdasarkan Sub-Kategori */}
+            <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
           <div className="print:hidden mb-6 border-b border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <h2 className="text-lg font-semibold text-slate-200">Rincian Anggaran Biaya (RAB - Rencana)</h2>
           </div>
@@ -1021,11 +1052,13 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
 
-        {/* Form Tambah Biaya Aktual */}
-        <div className="print-client-hide">
+        {activeTab === 'actual' && (
+          <div className="print-client-hide">
+            {/* Form Tambah Biaya Aktual */}
           <form onSubmit={handleAddExpense} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
             <h2 className="text-lg font-semibold mb-4 text-sky-400 flex items-center gap-2">
               <span>+</span> Catat Pengeluaran Lapangan (Aktual)
@@ -1040,7 +1073,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
                   required
                 />
-              </div>
+                </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Keterangan / Nama Belanja</label>
                 <input
@@ -1235,6 +1268,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             )}
           </div>
         </div>
+        )}
 
         {/* CATATAN KAKI (Cetak) */}
         <div className="hidden print:block mt-8 pt-4 border-t border-slate-300 text-xs text-slate-600 space-y-6">
