@@ -66,6 +66,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(false)
   const [loadingExpense, setLoadingExpense] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
 
   // State untuk Mode Edit Proyek
   const [isEditingProject, setIsEditingProject] = useState(false)
@@ -303,6 +307,123 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         quantity: parseFloat(quantity),
         unit_price: parseFloat(unitPrice),
         category: finalCategory
+      }
+
+      function parseCsvLine(line: string) {
+        const values: string[] = []
+        let value = ''
+        let isQuoted = false
+
+        for (let index = 0; index < line.length; index += 1) {
+          const character = line[index]
+          if (character === '"') {
+            if (isQuoted && line[index + 1] === '"') {
+              value += '"'
+              index += 1
+            } else {
+              isQuoted = !isQuoted
+            }
+          } else if (character === ',' && !isQuoted) {
+            values.push(value.trim())
+            value = ''
+          } else {
+            value += character
+          }
+        }
+
+        values.push(value.trim())
+        return values
+      }
+
+      function parseImportNumber(value: string, fieldName: string, rowNumber: number) {
+        const compactValue = value.trim().replace(/\s/g, '')
+        const lastCommaIndex = compactValue.lastIndexOf(',')
+        const lastDotIndex = compactValue.lastIndexOf('.')
+        let normalizedValue = compactValue
+
+        if (lastCommaIndex >= 0 && lastDotIndex >= 0) {
+          normalizedValue = lastCommaIndex > lastDotIndex
+            ? compactValue.replace(/\./g, '').replace(',', '.')
+            : compactValue.replace(/,/g, '')
+        } else if ((compactValue.match(/\./g) || []).length > 1) {
+          normalizedValue = compactValue.replace(/\./g, '')
+        } else {
+          normalizedValue = compactValue.replace(',', '.')
+        }
+
+        const parsedValue = Number(normalizedValue)
+
+        if (!normalizedValue || !Number.isFinite(parsedValue) || parsedValue < 0) {
+          throw new Error(`${fieldName} pada baris ${rowNumber} harus berupa angka valid.`)
+        }
+
+        return parsedValue
+      }
+
+      function handleDownloadTemplate() {
+        const blob = new Blob(['name,category,quantity,unit,unit_price\n'], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'template-rab.csv'
+        link.click()
+        URL.revokeObjectURL(url)
+      }
+
+      async function handleImportRab(e: React.FormEvent) {
+        e.preventDefault()
+        if (!importFile) {
+          setImportError('Pilih berkas CSV terlebih dahulu.')
+          return
+        }
+
+        setImporting(true)
+        setImportError('')
+
+        try {
+          const content = await importFile.text()
+          const lines = content.split(/\r?\n/).filter((line) => line.trim())
+          if (lines.length < 2) {
+            throw new Error('Berkas CSV harus berisi header dan minimal satu baris data.')
+          }
+
+          const headers = parseCsvLine(lines[0]).map((header) => header.replace(/^\uFEFF/, '').toLowerCase())
+          const expectedHeaders = ['name', 'category', 'quantity', 'unit', 'unit_price']
+          if (!expectedHeaders.every((header, index) => headers[index] === header)) {
+            throw new Error('Header CSV harus berurutan: name,category,quantity,unit,unit_price.')
+          }
+
+          const items = lines.slice(1).map((line, index) => {
+            const rowNumber = index + 2
+            const [itemName, itemCategory, itemQuantity, itemUnit, itemPrice] = parseCsvLine(line)
+            if (!itemName?.trim()) {
+              throw new Error(`Nama item pada baris ${rowNumber} wajib diisi.`)
+            }
+
+            return {
+              project_id: projectId,
+              name: itemName.trim(),
+              category: itemCategory?.trim() || 'Pekerjaan Lain-lain',
+              quantity: parseImportNumber(itemQuantity, 'Quantity', rowNumber),
+              unit: itemUnit?.trim() || 'unit',
+              unit_price: parseImportNumber(itemPrice, 'Unit price', rowNumber),
+            }
+          })
+
+          const { error } = await supabase.from('rab_items').insert(items)
+          if (error) {
+            throw new Error(`Gagal mengimpor RAB: ${error.message}`)
+          }
+
+          setIsImportModalOpen(false)
+          setImportFile(null)
+          await fetchProjectData()
+          alert(`${items.length} item RAB berhasil diimpor.`)
+        } catch (error) {
+          setImportError(error instanceof Error ? error.message : 'Gagal memproses berkas CSV.')
+        } finally {
+          setImporting(false)
+        }
       }
     ])
     setLoading(false)
@@ -734,8 +855,19 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
         {/* Tabel Rincian RAB Berkelompok Berdasarkan Sub-Kategori */}
         <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
-          <div className="print:hidden mb-6 border-b border-slate-800 pb-4">
+          <div className="print:hidden mb-6 border-b border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <h2 className="text-lg font-semibold text-slate-200">Rincian Anggaran Biaya (RAB - Rencana)</h2>
+            <button
+              type="button"
+              onClick={() => {
+                setImportError('')
+                setImportFile(null)
+                setIsImportModalOpen(true)
+              }}
+              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition shadow-lg shadow-emerald-900/20 cursor-pointer whitespace-nowrap"
+            >
+              📥 Impor RAB (CSV)
+            </button>
           </div>
 
           {rabItems.length === 0 ? (
@@ -1125,7 +1257,69 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               <p className="font-bold underline text-slate-900">{companyProfile?.company_name || 'WiraDana Contractor'}</p>
             </div>
           </div>
+
         </div>
+
+        {isImportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+            <div role="dialog" aria-modal="true" aria-labelledby="import-rab-title" className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <h2 id="import-rab-title" className="text-lg font-bold text-slate-100">Impor RAB dari CSV</h2>
+                  <p className="mt-1 text-xs text-slate-400">Gunakan template agar format kolom sesuai.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(false)}
+                  className="text-xl leading-none text-slate-500 hover:text-slate-200 cursor-pointer"
+                  aria-label="Tutup dialog"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <form onSubmit={handleImportRab} className="space-y-5">
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-semibold text-emerald-400 transition hover:border-emerald-500 hover:text-emerald-300 cursor-pointer"
+                >
+                  📄 Unduh Template CSV
+                </button>
+                <div>
+                  <label htmlFor="rab-csv-file" className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Berkas CSV</label>
+                  <input
+                    id="rab-csv-file"
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(event) => {
+                      setImportFile(event.target.files?.[0] || null)
+                      setImportError('')
+                    }}
+                    className="block w-full cursor-pointer rounded-lg border border-slate-800 bg-slate-950 text-sm text-slate-300 file:mr-4 file:border-0 file:bg-slate-800 file:px-4 file:py-2.5 file:text-xs file:font-semibold file:text-slate-200 hover:file:bg-slate-700"
+                  />
+                </div>
+                {importError && <p className="rounded-lg border border-red-900/60 bg-red-950/30 p-3 text-xs text-red-300">{importError}</p>}
+                <div className="flex justify-end gap-3 border-t border-slate-800 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsImportModalOpen(false)}
+                    className="rounded-lg border border-slate-700 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={importing}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                  >
+                    {importing ? 'Mengimpor...' : 'Impor RAB'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
