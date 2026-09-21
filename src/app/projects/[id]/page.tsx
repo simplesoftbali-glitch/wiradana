@@ -589,6 +589,17 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               📥 Ekspor Excel
             </button>
             <button
+              type="button"
+              onClick={() => {
+                setImportError('')
+                setImportFile(null)
+                setIsImportModalOpen(true)
+              }}
+              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg shadow-emerald-900/20 cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+            >
+              📥 Impor RAB (CSV)
+            </button>
+            <button
               onClick={() => {
                 document.body.classList.add('print-client-mode')
                 window.print()
@@ -857,17 +868,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
           <div className="print:hidden mb-6 border-b border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <h2 className="text-lg font-semibold text-slate-200">Rincian Anggaran Biaya (RAB - Rencana)</h2>
-            <button
-              type="button"
-              onClick={() => {
-                setImportError('')
-                setImportFile(null)
-                setIsImportModalOpen(true)
-              }}
-              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition shadow-lg shadow-emerald-900/20 cursor-pointer whitespace-nowrap"
-            >
-              📥 Impor RAB (CSV)
-            </button>
           </div>
 
           {rabItems.length === 0 ? (
