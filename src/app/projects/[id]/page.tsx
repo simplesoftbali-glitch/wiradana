@@ -1052,6 +1052,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
+              )}
             </div>
           </div>
         )}
