@@ -45,7 +45,7 @@ export default function RootLayout({
           <title>WiraDana - Aplikasi Estimasi RAB & Manajemen Keuangan Proyek Kontraktor</title>
           <meta name="description" content="Aplikasi manajemen proyek desktop-first untuk estimasi RAB, pencatatan pengeluaran harian, dan analisis Budget Variance Analysis (BVA) kontraktor." />
         </head>
-        <body className="bg-slate-950 text-slate-100 antialiased">
+        <body className="bg-slate-100 text-slate-900 antialiased">
           <div className="min-h-screen flex items-center justify-center font-mono text-xs text-slate-500">
             Memuat WiraDana...
           </div>
@@ -71,7 +71,7 @@ export default function RootLayout({
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="id_ID" />
       </head>
-      <body className="bg-slate-950 text-slate-100 antialiased">
+      <body className="bg-slate-100 text-slate-900 antialiased">
         {isPublicPage ? (
           // Jika di halaman publik (Belum login / Landing page / Login / Register): Tampilkan penuh tanpa Sidebar
           <main className="w-full min-h-screen">
@@ -79,9 +79,9 @@ export default function RootLayout({
           </main>
         ) : (
           // Jika sudah login dan berada di dalam aplikasi (Dashboard, Proyek, RAB, dll): Tampilkan dengan Sidebar
-          <div className="min-h-screen flex flex-col md:flex-row w-full">
+          <div className="min-h-screen flex flex-col w-full">
             <Sidebar />
-            <main className="flex-1 p-4 md:p-12 overflow-x-hidden w-full">
+            <main className="flex-1 p-4 md:p-8 overflow-x-hidden w-full">
               {children}
             </main>
           </div>

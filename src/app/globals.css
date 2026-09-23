@@ -6,16 +6,80 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8;
+}
+
+/* Keep existing page markup readable while the application uses the Enterprise Light palette. */
+@layer base {
+  body {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+}
+
+@layer utilities {
+  .bg-slate-950 { background-color: #f8fafc; }
+  .bg-slate-900 { background-color: #ffffff; }
+  .bg-slate-900\/80 { background-color: rgb(255 255 255 / 0.96); }
+  .bg-slate-900\/60 { background-color: rgb(255 255 255 / 0.9); }
+  .bg-slate-950\/60, .bg-slate-950\/50, .bg-slate-950\/40 { background-color: #f8fafc; }
+  .bg-slate-800 { background-color: #e2e8f0; }
+  .bg-slate-800\/50, .bg-slate-800\/40 { background-color: rgb(226 232 240 / 0.6); }
+  .border-slate-800, .border-slate-800\/80, .border-slate-800\/60 { border-color: #e2e8f0; }
+  .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0; }
+  .text-white { color: #0f172a; }
+  .text-slate-100, .text-slate-200 { color: #1e293b; }
+  .text-slate-300, .text-slate-400 { color: #475569; }
+  .text-slate-500 { color: #64748b; }
+  .text-emerald-400 { color: #047857; }
+  .text-sky-400 { color: #0369a1; }
+  .text-red-400 { color: #be123c; }
+  .text-purple-400 { color: #7e22ce; }
+  .bg-emerald-600 { background-color: #714B67; color: #ffffff; }
+  .bg-emerald-600:hover, .hover\:bg-emerald-500:hover { background-color: #5a3b52; color: #ffffff; }
+  .bg-emerald-950 { background-color: #ecfdf5; }
+  .bg-red-950, .bg-red-950\/30, .bg-red-950\/10 { background-color: #fff1f2; }
+  .bg-sky-950 { background-color: #f3e8ff; }
+  .bg-amber-950 { background-color: #fffbeb; }
+  .bg-purple-950 { background-color: #faf5ff; }
+  .border-emerald-800 { border-color: #a7f3d0; }
+  .border-sky-800 { border-color: #e9d5ff; }
+  .border-amber-800 { border-color: #fde68a; }
+  .border-red-800, .border-red-900\/40, .border-red-900\/60 { border-color: #fecdd3; }
+  .border-purple-800 { border-color: #e9d5ff; }
+  .bg-slate-700 { background-color: #e2e8f0; }
+  .border-slate-700 { border-color: #cbd5e1; }
+  .text-slate-700 { color: #334155; }
+  .text-slate-800 { color: #1e293b; }
+  .text-emerald-300, .text-sky-300, .text-red-300 { color: #475569; }
+  .border-emerald-500\/30 { border-color: #a7f3d0; }
+  .border-red-500\/50 { border-color: #fecdd3; }
+  .bg-red-900\/30 { background-color: #fff1f2; }
+  input, select, textarea {
+    color-scheme: light;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: #714B67 !important;
+    box-shadow: 0 0 0 1px #714B67;
+  }
+  table thead tr {
+    background-color: #f8fafc;
+    color: #475569;
+    border-bottom-color: #e2e8f0;
+  }
+  table tbody tr {
+    border-bottom-color: #e2e8f0;
+  }
+  .shadow-xl, .shadow-lg { box-shadow: 0 1px 3px rgb(15 23 42 / 0.08), 0 8px 24px rgb(15 23 42 / 0.05); }
 }
 
 /* Styling Khusus Mode Cetak / Ekspor PDF yang Bersih Mutlak */

@@ -294,6 +294,7 @@ export default function ProjectsPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                    <th className="py-3 px-4 w-10"><input type="checkbox" aria-label="Pilih semua proyek" className="accent-[#714B67]" /></th>
                     <th className="py-3 px-4">Nama Proyek</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Mulai</th>
@@ -304,6 +305,7 @@ export default function ProjectsPage() {
                 <tbody className="divide-y divide-slate-800/60">
                   {filteredProjects.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-800/40 transition group">
+                      <td className="py-4 px-4"><input type="checkbox" aria-label={`Pilih ${p.name}`} className="accent-[#714B67]" /></td>
                       <td className="py-4 px-4 font-medium">
                         <Link href={`/projects/${p.id}`} className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5">
                           {p.name}

@@ -63,11 +63,11 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
   return (
     <>
       {/* Tombol Hamburger Menu untuk Mobile (Ditambahkan kelas no-print) */}
-      <div className="no-print md:hidden flex items-center justify-between bg-slate-900 text-white px-4 py-3 border-b border-slate-800">
-        <span className="font-bold text-lg tracking-wider text-emerald-400">WiraDana</span>
+      <div className="no-print md:hidden flex items-center justify-between bg-white text-slate-900 px-4 py-3 border-b border-slate-200">
+        <span className="font-bold text-lg tracking-wider text-[#714B67]">WiraDana</span>
         <button 
           onClick={toggleSidebar}
-          className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 focus:outline-none"
+          className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 focus:outline-none"
           aria-label="Toggle Menu"
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -84,24 +84,24 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
 
       {/* Konten Sidebar (Ditambahkan kelas no-print) */}
       <aside className={`
-        no-print fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out
-        md:translate-x-0 md:static md:inset-auto border-r border-slate-800
+        no-print fixed inset-y-0 left-0 z-50 w-72 bg-white text-slate-600 flex flex-col transition-transform duration-300 ease-in-out
+        md:translate-x-0 md:static md:inset-auto md:h-16 md:flex-row md:items-center border-b border-slate-200 md:border-r-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header Sidebar (Desktop) */}
-        <div className="p-6 hidden md:flex items-center justify-between border-b border-slate-800">
-          <h1 className="text-xl font-bold text-emerald-400 tracking-wider">WiraDana</h1>
+        <div className="p-5 hidden md:flex md:order-1 items-center justify-between border-b border-slate-200 md:border-b-0">
+          <h1 className="text-xl font-bold text-[#714B67] tracking-wider">WiraDana</h1>
         </div>
 
         {/* Profil Pengguna / User Email */}
-        <div className="px-4 py-4 border-b border-slate-800 bg-slate-950/40">
+        <div className="px-4 py-3 md:order-3 border-b border-slate-200 bg-slate-50 md:border-b-0 md:border-l md:bg-white">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-[#714B67] shrink-0">
               <User size={16} />
             </div>
             <div className="overflow-hidden">
               <span className="text-[10px] uppercase tracking-wider text-slate-500 block">Masuk sebagai</span>
-              <p className="text-xs font-medium text-slate-200 truncate" title={userEmail || 'Pengguna'}>
+              <p className="text-xs font-medium text-slate-700 truncate" title={userEmail || 'Pengguna'}>
                 {userEmail || 'Memuat akun...'}
               </p>
             </div>
@@ -109,7 +109,7 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
         </div>
 
         {/* Daftar Menu Navigasi */}
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-3 md:order-2 space-y-1 overflow-y-auto md:flex md:items-center md:gap-1 md:space-y-0 md:overflow-visible">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -120,8 +120,8 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                   isActive 
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' 
-                    : 'hover:bg-slate-800 hover:text-white text-slate-400'
+                    ? 'bg-purple-100 text-[#714B67] shadow-sm'
+                    : 'hover:bg-slate-100 hover:text-slate-900 text-slate-500'
                 }`}
               >
                 <Icon size={20} />
@@ -132,15 +132,15 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
         </nav>
 
         {/* Tombol Logout & Footer */}
-        <div className="p-4 border-t border-slate-800 space-y-3">
+        <div className="p-4 md:order-4 border-t border-slate-200 space-y-3 md:border-t-0 md:pt-3">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 text-red-400 hover:text-red-300 py-2.5 px-4 rounded-xl text-xs font-semibold transition cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 hover:text-rose-800 py-2.5 px-4 rounded-xl text-xs font-semibold transition cursor-pointer"
           >
             <LogOut size={16} />
             <span>Keluar (Logout)</span>
           </button>
-          <div className="text-[10px] text-slate-600 text-center font-mono">
+          <div className="text-[10px] text-slate-400 text-center font-mono">
             WiraDana Mobile v1.0
           </div>
         </div>

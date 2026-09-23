@@ -767,15 +767,15 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         </div>
 
         {/* Navigasi modul keuangan */}
-        <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-1.5 shadow-xl print:hidden">
-          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+        <div className="mb-6 border-b border-slate-200 bg-white print:hidden">
+          <div className="flex gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('rab')}
               className={`rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
                 activeTab === 'rab'
-                  ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-950/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                  ? 'border-b-2 border-[#714B67] text-[#714B67] font-bold'
+                  : 'border-b-2 border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
               📋 Rencana Anggaran (RAB)
@@ -785,8 +785,8 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               onClick={() => setActiveTab('actual')}
               className={`rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
                 activeTab === 'actual'
-                  ? 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-950/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                  ? 'border-b-2 border-[#714B67] text-[#714B67] font-bold'
+                  : 'border-b-2 border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
               💸 Pengeluaran Lapangan (Aktual)
