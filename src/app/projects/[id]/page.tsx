@@ -704,7 +704,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                     type="date"
                     value={editStartDate}
                     onChange={(e) => setEditStartDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono"
                   />
                 </div>
                 <div>
@@ -713,7 +713,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                     type="date"
                     value={editEndDate}
                     onChange={(e) => setEditEndDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 transition font-mono"
                   />
                 </div>
               </div>
@@ -1071,7 +1071,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   type="date"
                   value={expDate}
                   onChange={(e) => setExpDate(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500 transition font-mono [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500 transition font-mono"
                   required
                 />
                 </div>
