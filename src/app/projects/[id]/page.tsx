@@ -16,6 +16,7 @@ import {
   Printer,
   Receipt,
   Upload,
+  X,
 } from 'lucide-react'
 
 interface Project {
@@ -81,6 +82,8 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
   // State Modal Impor CSV
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isRabModalOpen, setIsRabModalOpen] = useState(false)
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
@@ -446,6 +449,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       setCategory('')
       setCustomCategory('')
       fetchProjectData()
+      setIsRabModalOpen(false)
     }
   }
 
@@ -499,6 +503,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       setExpAmount('')
       setReceiptFile(null)
       fetchProjectData()
+      setIsExpenseModalOpen(false)
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Gagal menyimpan pengeluaran.')
     } finally {
@@ -808,8 +813,23 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
         {activeTab === 'rab' && (
           <div>
-            {/* Form Tambah Item RAB dengan Kategori Custom Dinamis */}
-            <form onSubmit={handleAddRab} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
+            <div className="no-print mb-6 flex justify-end">
+              <button type="button" onClick={() => setIsRabModalOpen(true)} className="flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52]">
+                <Plus className="h-4 w-4" /> Tambah Item RAB
+              </button>
+            </div>
+
+            {isRabModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+                <div role="dialog" aria-modal="true" aria-labelledby="new-rab-title" className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl">
+                  <div className="mb-5 flex items-start justify-between border-b border-slate-200 pb-4">
+                    <div>
+                      <h2 id="new-rab-title" className="text-lg font-bold">Tambah Item RAB (Rencana)</h2>
+                      <p className="mt-1 text-xs text-slate-500">Tambahkan rincian pekerjaan, volume, dan harga satuan.</p>
+                    </div>
+                    <button type="button" onClick={() => setIsRabModalOpen(false)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Tutup dialog"><X className="h-5 w-5" /></button>
+                  </div>
+                  <form onSubmit={handleAddRab} className="space-y-4">
           <h2 className="text-lg font-semibold mb-4 text-emerald-400 flex items-center gap-2">
             <Plus className="w-4 h-4 mr-1.5 inline" /> Tambah Item RAB (Rencana)
           </h2>
@@ -890,16 +910,14 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               />
             </div>
           </div>
-          <div className="flex justify-end pt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-6 py-2.5 rounded-lg text-sm transition shadow-lg cursor-pointer disabled:opacity-50"
-            >
-              {loading ? 'Menyimpan...' : 'Tambah ke RAB'}
-            </button>
-          </div>
-            </form>
+                  <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+                    <button type="button" onClick={() => setIsRabModalOpen(false)} className="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200">Batal</button>
+                    <button type="submit" disabled={loading} className="rounded-lg bg-[#714B67] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52] disabled:opacity-50">{loading ? 'Menyimpan...' : 'Tambah ke RAB'}</button>
+                  </div>
+                  </form>
+                </div>
+              </div>
+            )}
 
             {/* Tabel Rincian RAB Berkelompok Berdasarkan Sub-Kategori */}
             <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
@@ -1071,8 +1089,23 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
         {activeTab === 'actual' && (
           <div className="print-client-hide">
-            {/* Form Tambah Biaya Aktual */}
-          <form onSubmit={handleAddExpense} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
+            <div className="no-print mb-6 flex justify-end">
+              <button type="button" onClick={() => setIsExpenseModalOpen(true)} className="flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52]">
+                <Plus className="h-4 w-4" /> Catat Pengeluaran
+              </button>
+            </div>
+
+            {isExpenseModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+                <div role="dialog" aria-modal="true" aria-labelledby="new-expense-title" className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl">
+                  <div className="mb-5 flex items-start justify-between border-b border-slate-200 pb-4">
+                    <div>
+                      <h2 id="new-expense-title" className="text-lg font-bold">Catat Pengeluaran / Biaya Aktual</h2>
+                      <p className="mt-1 text-xs text-slate-500">Simpan transaksi lapangan dan lampirkan nota jika tersedia.</p>
+                    </div>
+                    <button type="button" onClick={() => setIsExpenseModalOpen(false)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Tutup dialog"><X className="h-5 w-5" /></button>
+                  </div>
+                  <form onSubmit={handleAddExpense} className="space-y-4">
             <h2 className="text-lg font-semibold mb-4 text-sky-400 flex items-center gap-2">
               <span>+</span> Catat Pengeluaran Lapangan (Aktual)
             </h2>
@@ -1132,16 +1165,16 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 )}
               </div>
             </div>
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                disabled={loadingExpense || uploading}
-                className="bg-sky-600 hover:bg-sky-500 text-slate-950 font-bold px-6 py-2.5 rounded-lg text-sm transition shadow-lg cursor-pointer disabled:opacity-50"
-              >
-                {uploading ? 'Mengunggah Nota...' : loadingExpense ? 'Menyimpan...' : 'Simpan Pengeluaran'}
-              </button>
-            </div>
-          </form>
+                    <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+                      <button type="button" onClick={() => setIsExpenseModalOpen(false)} className="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200">Batal</button>
+                      <button type="submit" disabled={loadingExpense || uploading} className="rounded-lg bg-[#714B67] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52] disabled:opacity-50">
+                        {uploading ? 'Mengunggah Nota...' : loadingExpense ? 'Menyimpan...' : 'Simpan Pengeluaran'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
 
           {/* Tabel Realisasi Biaya Aktual */}
           <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl print:border-none print:p-0 print:shadow-none print:mt-6">

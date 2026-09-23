@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FolderOpen, Search } from 'lucide-react'
+import { FolderOpen, Plus, Search, X } from 'lucide-react'
 
 interface Project {
   id: string
@@ -27,6 +27,7 @@ export default function ProjectsPage() {
   const [fetching, setFetching] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
 
   // Fungsi helper untuk mengevaluasi status efektif (deteksi otomatis Overdue)
   function getEffectiveStatus(project: { status: string; end_date?: string }) {
@@ -118,6 +119,7 @@ export default function ProjectsPage() {
       setStartDate('')
       setEndDate('')
       setStatus('Scheduled')
+      setIsProjectModalOpen(false)
       fetchProjects()
     }
   }
@@ -150,19 +152,33 @@ export default function ProjectsPage() {
     <div className="w-full">
       <main className="max-w-5xl mx-auto space-y-8">
         
-        {/* Header Halaman */}
-        <div className="border-b border-slate-800 pb-6">
-          <h1 className="text-2xl font-extrabold tracking-tight text-white mb-1">Manajemen Proyek & RAB</h1>
-          <p className="text-slate-400 text-sm">Pusat pendaftaran proyek baru dan pengelolaan rincian anggaran biaya (RAB).</p>
+        <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-6">
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white mb-1">Manajemen Proyek & RAB</h1>
+            <p className="text-slate-400 text-sm">Pusat pendaftaran proyek baru dan pengelolaan rincian anggaran biaya (RAB).</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsProjectModalOpen(true)}
+            className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#714B67] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#5a3b52]"
+          >
+            <Plus className="h-4 w-4" /> Buat Proyek Baru
+          </button>
         </div>
 
-        {/* Formulir Input Proyek Baru */}
-        <section className="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-6 shadow-xl">
-          <h2 className="text-lg font-semibold mb-4 text-emerald-400 flex items-center gap-2">
-            <span>+</span> Buat Proyek Baru
-          </h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
+        {isProjectModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+            <div role="dialog" aria-modal="true" aria-labelledby="new-project-title" className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl">
+              <div className="mb-5 flex items-start justify-between border-b border-slate-200 pb-4">
+                <div>
+                  <h2 id="new-project-title" className="text-lg font-bold">Buat Proyek Baru</h2>
+                  <p className="mt-1 text-xs text-slate-500">Lengkapi informasi dasar proyek untuk mulai mengelola RAB.</p>
+                </div>
+                <button type="button" onClick={() => setIsProjectModalOpen(false)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Tutup dialog">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Nama Proyek</label>
@@ -218,17 +234,16 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-slate-950 font-bold px-6 py-2.5 rounded-lg text-sm transition shadow-lg shadow-emerald-950/50 cursor-pointer disabled:opacity-50"
-              >
-                {loading ? 'Menyimpan...' : 'Simpan Proyek'}
-              </button>
+                <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+                  <button type="button" onClick={() => setIsProjectModalOpen(false)} className="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200">Batal</button>
+                  <button type="submit" disabled={loading} className="flex items-center justify-center rounded-lg bg-[#714B67] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#5a3b52] disabled:opacity-50">
+                    {loading ? 'Menyimpan...' : 'Simpan Proyek'}
+                  </button>
+                </div>
+              </form>
             </div>
-          </form>
-        </section>
+          </div>
+        )}
 
         {/* Daftar Proyek Aktif */}
         <section className="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-6 shadow-xl">

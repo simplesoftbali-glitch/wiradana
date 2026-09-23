@@ -15,6 +15,8 @@ import {
   Sparkles,
   TrendingUp,
   ShieldCheck,
+  Plus,
+  X,
 } from 'lucide-react'
 import BvaChart from '../components/BvaChart'
 
@@ -44,6 +46,13 @@ export default function LandingOrDashboard() {
   const [totalRabGlobal, setTotalRabGlobal] = useState(0)
   const [totalActualGlobal, setTotalActualGlobal] = useState(0)
   const [chartData, setChartData] = useState<ChartItem[]>([])
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [projectName, setProjectName] = useState('')
+  const [projectDescription, setProjectDescription] = useState('')
+  const [projectStartDate, setProjectStartDate] = useState('')
+  const [projectEndDate, setProjectEndDate] = useState('')
+  const [projectStatus, setProjectStatus] = useState('Scheduled')
+  const [savingProject, setSavingProject] = useState(false)
 
   // JSON-LD Structured Data untuk GEO & Google Indexing
   const jsonLdData = {
@@ -147,6 +156,41 @@ export default function LandingOrDashboard() {
 
     checkUserAndFetch()
   }, [])
+
+  async function handleCreateProject(e: React.FormEvent) {
+    e.preventDefault()
+    if (!projectName.trim()) return alert('Nama proyek wajib diisi!')
+
+    const { data: { session: currentSession } } = await supabase.auth.getSession()
+    if (!currentSession) {
+      router.push('/login')
+      return
+    }
+
+    setSavingProject(true)
+    const { error } = await supabase.from('projects').insert([{
+      name: projectName.trim(),
+      description: projectDescription,
+      start_date: projectStartDate || null,
+      end_date: projectEndDate || null,
+      status: projectStatus,
+      user_id: currentSession.user.id,
+    }])
+    setSavingProject(false)
+
+    if (error) {
+      alert('Gagal menyimpan: ' + error.message)
+      return
+    }
+
+    setProjectName('')
+    setProjectDescription('')
+    setProjectStartDate('')
+    setProjectEndDate('')
+    setProjectStatus('Scheduled')
+    setIsProjectModalOpen(false)
+    router.refresh()
+  }
 
   if (loading) {
     return (
@@ -316,12 +360,13 @@ export default function LandingOrDashboard() {
             </h1>
             <p className="text-slate-400 text-sm mt-1">Ringkasan kesehatan finansial dan portofolio proyek secara real-time.</p>
           </div>
-          <Link
-            href="/projects"
-            className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-950/50"
+          <button
+            type="button"
+            onClick={() => setIsProjectModalOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#5a3b52]"
           >
-            + Kelola / Buat Proyek
-          </Link>
+            <Plus className="h-4 w-4" /> Buat Proyek Baru
+          </button>
         </header>
 
         <div className="space-y-8">
@@ -421,6 +466,55 @@ export default function LandingOrDashboard() {
             </div>
           </div>
         </div>
+
+        {isProjectModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+            <div role="dialog" aria-modal="true" aria-labelledby="dashboard-new-project-title" className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl">
+              <div className="mb-5 flex items-start justify-between border-b border-slate-200 pb-4">
+                <div>
+                  <h2 id="dashboard-new-project-title" className="text-lg font-bold">Buat Proyek Baru</h2>
+                  <p className="mt-1 text-xs text-slate-500">Lengkapi informasi dasar proyek untuk mulai mengelola RAB.</p>
+                </div>
+                <button type="button" onClick={() => setIsProjectModalOpen(false)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Tutup dialog">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleCreateProject} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">Nama Proyek</label>
+                    <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Contoh: Instalasi Smart Home" className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900" required />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">Deskripsi</label>
+                    <input type="text" value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} placeholder="Deskripsi singkat proyek" className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">Tanggal Mulai</label>
+                    <input type="date" value={projectStartDate} onChange={(e) => setProjectStartDate(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">Tanggal Selesai</label>
+                    <input type="date" value={projectEndDate} onChange={(e) => setProjectEndDate(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">Status Awal</label>
+                    <select value={projectStatus} onChange={(e) => setProjectStatus(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900">
+                      <option value="Scheduled">Scheduled (Terjadwal)</option>
+                      <option value="On Track">On Track (Berjalan Normal)</option>
+                      <option value="On Hold">On Hold (Ditunda)</option>
+                      <option value="Closed">Closed (Selesai)</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+                  <button type="button" onClick={() => setIsProjectModalOpen(false)} className="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200">Batal</button>
+                  <button type="submit" disabled={savingProject} className="rounded-lg bg-[#714B67] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52] disabled:opacity-50">{savingProject ? 'Menyimpan...' : 'Simpan Proyek'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )
