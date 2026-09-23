@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { isSupabaseConfigured, supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -15,6 +15,12 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setAuthError('')
+
+    if (!isSupabaseConfigured) {
+      setAuthError('Gagal terhubung ke server Supabase. Pastikan koneksi internet Anda aktif dan variabel lingkungan (.env.local) sudah terkonfigurasi dengan benar.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -28,11 +34,11 @@ export default function LoginPage() {
         return
       }
 
-      router.push('/')
+      router.push('/projects')
       router.refresh()
     } catch (error) {
       const message = error instanceof TypeError && error.message === 'Failed to fetch'
-        ? 'Tidak dapat terhubung ke layanan login. Periksa koneksi internet dan konfigurasi Supabase.'
+        ? 'Gagal terhubung ke server Supabase. Pastikan koneksi internet Anda aktif dan variabel lingkungan (.env.local) sudah terkonfigurasi dengan benar.'
         : error instanceof Error
           ? error.message
           : 'Terjadi kesalahan saat mencoba masuk.'

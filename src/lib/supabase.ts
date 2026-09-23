@@ -8,20 +8,28 @@ import { createClient } from '@supabase/supabase-js'
 /**
  * The URL of the Supabase instance.
  */
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 /**
  * The anonymous key for accessing the Supabase instance.
  */
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+export const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Konfigurasi Supabase belum lengkap. Pastikan NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY tersedia.'
-  )
+const isDummyValue = (value: string) => /dummy|example|placeholder|your[-_ ]/i.test(value)
+
+export const isSupabaseConfigured = Boolean(
+  supabaseUrl &&
+  supabaseAnonKey &&
+  /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(supabaseUrl) &&
+  supabaseAnonKey.length >= 20 &&
+  !isDummyValue(supabaseUrl) &&
+  !isDummyValue(supabaseAnonKey)
 }
 
 /**
  * The initialized Supabase client.
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(
+  supabaseUrl || 'https://invalid.supabase.co',
+  supabaseAnonKey || 'invalid-supabase-anon-key'
+)
