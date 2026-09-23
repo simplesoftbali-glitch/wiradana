@@ -9,24 +9,36 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [authError, setAuthError] = useState('')
   const router = useRouter()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    setAuthError('')
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
 
-    setLoading(false)
+      if (error) {
+        setAuthError(`Gagal masuk: ${error.message}`)
+        return
+      }
 
-    if (error) {
-      alert('Gagal Masuk: ' + error.message)
-    } else {
       router.push('/')
       router.refresh()
+    } catch (error) {
+      const message = error instanceof TypeError && error.message === 'Failed to fetch'
+        ? 'Tidak dapat terhubung ke layanan login. Periksa koneksi internet dan konfigurasi Supabase.'
+        : error instanceof Error
+          ? error.message
+          : 'Terjadi kesalahan saat mencoba masuk.'
+      setAuthError(message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -42,6 +54,11 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
+          {authError && (
+            <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+              {authError}
+            </p>
+          )}
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Email</label>
             <input

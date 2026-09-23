@@ -8,12 +8,18 @@ import { createClient } from '@supabase/supabase-js'
 /**
  * The URL of the Supabase instance.
  */
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 /**
  * The anonymous key for accessing the Supabase instance.
  */
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Konfigurasi Supabase belum lengkap. Pastikan NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY tersedia.'
+  )
+}
 
 /**
  * The initialized Supabase client.
