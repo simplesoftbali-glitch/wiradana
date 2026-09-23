@@ -24,7 +24,7 @@ export const isSupabaseConfigured = Boolean(
   supabaseAnonKey.length >= 20 &&
   !isDummyValue(supabaseUrl) &&
   !isDummyValue(supabaseAnonKey)
-}
+)
 
 /**
  * The initialized Supabase client.
