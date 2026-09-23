@@ -5,6 +5,18 @@ import { supabase } from '../../../lib/supabase'
 import { exportToExcel } from '../../../lib/exportUtils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import {
+  ClipboardList,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Pencil,
+  Plus,
+  Printer,
+  Receipt,
+  Upload,
+} from 'lucide-react'
 
 interface Project {
   id: string
@@ -573,15 +585,15 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 document.body.classList.remove('print-client-mode')
                 window.print()
               }}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              className="flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 transition cursor-pointer"
             >
-              🖨️ Cetak Laporan Internal
+              <Printer className="w-4 h-4 mr-2" /> Cetak Laporan Internal
             </button>
             <button
               onClick={handleExportExcel}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              className="flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 transition cursor-pointer"
             >
-              📥 Ekspor Excel
+              <FileSpreadsheet className="w-4 h-4 mr-2" /> Ekspor Excel
             </button>
             <button
               type="button"
@@ -590,9 +602,9 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 setImportFile(null)
                 setIsImportModalOpen(true)
               }}
-              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg shadow-emerald-900/20 cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+              className="flex items-center justify-center gap-1.5 bg-[#714B67] hover:bg-[#5a3b52] text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg shadow-purple-900/20 cursor-pointer whitespace-nowrap"
             >
-              📥 Impor RAB (CSV)
+              <Upload className="w-4 h-4 mr-2" /> Impor RAB (CSV)
             </button>
             <button
               onClick={() => {
@@ -602,9 +614,9 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   document.body.classList.remove('print-client-mode')
                 }, 500)
               }}
-              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 shadow-lg shadow-emerald-900/30"
+              className="flex items-center justify-center gap-1.5 bg-[#714B67] hover:bg-[#5a3b52] text-white text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer shadow-lg shadow-purple-900/30"
             >
-              📄 Cetak Dokumen Penawaran Klien
+              <FileText className="w-4 h-4 mr-2" /> Cetak Dokumen Penawaran Klien
             </button>
           </div>
         </div>
@@ -647,9 +659,9 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               </div>
               <button
                 onClick={() => setIsEditingProject(true)}
-                className="no-print bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition border border-slate-700 cursor-pointer flex items-center gap-1.5 shrink-0"
+                className="no-print flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs transition border border-slate-300 cursor-pointer shrink-0"
               >
-                ✏️ Edit Proyek
+                <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit Proyek
               </button>
             </div>
           ) : (
@@ -772,24 +784,24 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             <button
               type="button"
               onClick={() => setActiveTab('rab')}
-              className={`rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
+              className={`flex items-center rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
                 activeTab === 'rab'
                   ? 'border-b-2 border-[#714B67] text-[#714B67] font-bold'
                   : 'border-b-2 border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
-              📋 Rencana Anggaran (RAB)
+              <ClipboardList className="w-4 h-4 mr-2 text-[#714B67]" /> Rencana Anggaran (RAB)
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('actual')}
-              className={`rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
+              className={`flex items-center rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
                 activeTab === 'actual'
                   ? 'border-b-2 border-[#714B67] text-[#714B67] font-bold'
                   : 'border-b-2 border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
-              💸 Pengeluaran Lapangan (Aktual)
+              <Receipt className="w-4 h-4 mr-2 text-slate-500" /> Pengeluaran Lapangan (Aktual)
             </button>
           </div>
         </div>
@@ -799,7 +811,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             {/* Form Tambah Item RAB dengan Kategori Custom Dinamis */}
             <form onSubmit={handleAddRab} className="no-print bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl mb-8 shadow-xl">
           <h2 className="text-lg font-semibold mb-4 text-emerald-400 flex items-center gap-2">
-            <span>+</span> Tambah Item RAB (Rencana)
+            <Plus className="w-4 h-4 mr-1.5 inline" /> Tambah Item RAB (Rencana)
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div className="md:col-span-2">
@@ -898,7 +910,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           {rabItems.length === 0 ? (
             <div className="text-center py-12 px-6 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
               <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 text-base font-mono">
-                📋
+                <ClipboardList className="w-5 h-5" />
               </div>
               <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Item RAB</h3>
               <p className="text-slate-500 text-xs max-w-xs mx-auto mb-4">
@@ -1140,7 +1152,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             {actualExpenses.length === 0 ? (
               <div className="text-center py-12 px-6 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
                 <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 text-base font-mono">
-                  💸
+                  <Receipt className="w-5 h-5" />
                 </div>
                 <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Catatan Pengeluaran</h3>
                 <p className="text-slate-500 text-xs max-w-xs mx-auto">
@@ -1232,7 +1244,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                     rel="noopener noreferrer"
                                     className="text-emerald-400 hover:text-emerald-300 text-xs font-semibold whitespace-nowrap"
                                   >
-                                    👁️ Lihat Nota
+                                    <Eye className="inline-block w-3.5 h-3.5 mr-1" /> Lihat Nota
                                   </a>
                                 ) : (
                                   <span className="text-slate-600 text-xs">-</span>
@@ -1310,7 +1322,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                   onClick={handleDownloadTemplate}
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-semibold text-emerald-400 transition hover:border-emerald-500 hover:text-emerald-300 cursor-pointer"
                 >
-                  📄 Unduh Template CSV
+                  <Download className="inline-block w-4 h-4 mr-2" /> Unduh Template CSV
                 </button>
                 <div>
                   <label htmlFor="rab-csv-file" className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-400">Berkas CSV</label>

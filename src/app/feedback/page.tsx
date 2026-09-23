@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import { MessageCircle } from 'lucide-react'
 // HAPUS baris import Sidebar ini karena sudah ditangani oleh layout.tsx:
 // import Sidebar from '../../components/Sidebar'
 
@@ -189,7 +190,7 @@ export default function FeedbackPage() {
                   {item.admin_reply && (
                     <div className="mt-3 bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-lg">
                       <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
-                        💬 Tanggapan Pengembang (WiraDana):
+                        <MessageCircle className="inline-block w-4 h-4 mr-1" /> Tanggapan Pengembang (WiraDana):
                       </span>
                       <p className="text-xs text-slate-200">{item.admin_reply}</p>
                     </div>

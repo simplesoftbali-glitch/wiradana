@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { exportToExcel } from '../../lib/exportUtils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { FileSpreadsheet, Printer } from 'lucide-react'
 
 interface ProjectBvaSummary {
   id: string
@@ -135,15 +136,15 @@ export default function BvaAnalysisPage() {
           </Link>
           <button
             onClick={() => window.print()}
-            className="no-print bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+            className="no-print flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-300 transition cursor-pointer"
           >
-            🖨️ Cetak Laporan BVA
+            <Printer className="w-4 h-4 mr-2" /> Cetak Laporan BVA
           </button>
           <button
             onClick={handleExportExcel}
             className="no-print bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5"
           >
-            📥 Ekspor Rekap BVA (Excel)
+            <FileSpreadsheet className="w-4 h-4 mr-2" /> Ekspor Rekap BVA (Excel)
           </button>
         </div>
 

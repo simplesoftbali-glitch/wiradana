@@ -4,7 +4,18 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FolderKanban, Calculator, ShieldCheck, ArrowRight, Sparkles, HelpCircle, BarChart3 } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  BarChart3,
+  Calculator,
+  FolderKanban,
+  HelpCircle,
+  Lightbulb,
+  Sparkles,
+  TrendingUp,
+  ShieldCheck,
+} from 'lucide-react'
 import BvaChart from '../components/BvaChart'
 
 interface Project {
@@ -206,7 +217,7 @@ export default function LandingOrDashboard() {
           </div>
 
           <div className="text-[11px] text-slate-500 font-mono pt-2">
-            💡 Dirancang optimal untuk kenyamanan layar Laptop / PC (Desktop-First).
+            <Lightbulb className="inline-block w-3.5 h-3.5 mr-1" /> Dirancang optimal untuk kenyamanan layar Laptop / PC (Desktop-First).
           </div>
         </section>
 
@@ -395,15 +406,15 @@ export default function LandingOrDashboard() {
               
               <div className="space-y-2.5">
                 <Link href="/projects" className="block p-3 rounded-xl bg-slate-950/60 hover:bg-emerald-950/30 border border-slate-800 hover:border-emerald-800/50 transition text-xs font-medium text-slate-200">
-                  📂 <strong className="text-white ml-1">Proyek & RAB</strong>
+                  <FolderKanban className="inline-block w-4 h-4 mr-1" /> <strong className="text-white ml-1">Proyek & RAB</strong>
                   <span className="block text-[11px] text-slate-500 mt-0.5">Buat proyek baru & atur rincian RAB</span>
                 </Link>
                 <Link href="/bva" className="block p-3 rounded-xl bg-slate-950/60 hover:bg-emerald-950/30 border border-slate-800 hover:border-emerald-800/50 transition text-xs font-medium text-slate-200">
-                  📊 <strong className="text-white ml-1">Kalkulator / BVA</strong>
+                  <TrendingUp className="inline-block w-4 h-4 mr-1" /> <strong className="text-white ml-1">Kalkulator / BVA</strong>
                   <span className="block text-[11px] text-slate-500 mt-0.5">Analisis selisih anggaran riil</span>
                 </Link>
                 <Link href="/reports" className="block p-3 rounded-xl bg-slate-950/60 hover:bg-emerald-950/30 border border-slate-800 hover:border-emerald-800/50 transition text-xs font-medium text-slate-200">
-                  📈 <strong className="text-white ml-1">Laporan & Cash Flow</strong>
+                  <AlertCircle className="inline-block w-4 h-4 mr-1" /> <strong className="text-white ml-1">Laporan & Cash Flow</strong>
                   <span className="block text-[11px] text-slate-500 mt-0.5">Rekapitulasi keuangan makro</span>
                 </Link>
               </div>

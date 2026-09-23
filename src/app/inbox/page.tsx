@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import { Inbox as InboxIcon } from 'lucide-react'
 // HAPUS baris import Sidebar ini karena sudah ditangani oleh layout.tsx:
 // import Sidebar from '../../components/Sidebar'
 
@@ -68,7 +69,7 @@ export default function InboxPage() {
         ) : broadcasts.length === 0 ? (
           <div className="text-center py-16 px-6 border border-dashed border-slate-800 rounded-2xl bg-slate-950/40">
             <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 text-xl font-mono">
-              📥
+              <InboxIcon className="w-5 h-5" />
             </div>
             <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Pesan Masuk</h3>
             <p className="text-slate-500 text-xs max-w-sm mx-auto">
