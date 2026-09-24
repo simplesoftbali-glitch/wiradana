@@ -15,7 +15,8 @@ import {
   X,
   LogOut,
   User,
-  Settings
+  Settings,
+  Heart
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -99,8 +100,20 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
           <h1 className="text-xl font-bold text-[#714B67] tracking-wider">WiraDana</h1>
         </div>
 
+        {/* CTA Donasi */}
+        <div className="px-4 py-3 md:order-3 md:ml-auto md:px-0 md:py-0 md:shrink-0">
+          <Link
+            href="/donate"
+            onClick={() => setIsOpen(false)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition shrink-0"
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+            <span>Dukung Operasional</span>
+          </Link>
+        </div>
+
         {/* Profil Pengguna / User Email */}
-        <div className="px-4 py-3 md:order-3 md:ml-3 md:px-0 md:py-0 border-b border-slate-200 bg-slate-50 md:border-b-0 md:border-l md:bg-white md:shrink-0">
+        <div className="px-4 py-3 md:order-4 md:ml-3 md:px-0 md:py-0 border-b border-slate-200 bg-slate-50 md:border-b-0 md:border-l md:bg-white md:shrink-0">
           <div className="flex items-center gap-3 px-2 md:pl-3">
             <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-[#714B67] shrink-0">
               <User size={16} />
@@ -138,7 +151,7 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
         </nav>
 
         {/* Tombol Logout & Footer */}
-        <div className="p-4 md:order-4 md:p-0 md:ml-3 border-t border-slate-200 space-y-3 md:border-t-0 md:shrink-0">
+        <div className="p-4 md:order-5 md:p-0 md:ml-3 border-t border-slate-200 space-y-3 md:border-t-0 md:shrink-0">
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 hover:text-rose-800 px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer md:w-auto"
