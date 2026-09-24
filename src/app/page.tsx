@@ -10,11 +10,10 @@ import {
   BarChart3,
   Calculator,
   FolderKanban,
-  HelpCircle,
-  Lightbulb,
-  Sparkles,
+  Receipt,
   TrendingUp,
   ShieldCheck,
+  Upload,
   Plus,
   X,
 } from 'lucide-react'
@@ -203,144 +202,114 @@ export default function LandingOrDashboard() {
   // JIKA PENGGUNA BELUM LOGIN: Landing Page
   if (!session) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
+      <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-[#714B67] selection:text-white">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
         />
 
-        <nav className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center border-b border-slate-900">
-          <div className="flex items-center gap-2">
-            <span className="bg-emerald-500 w-3 h-3 rounded-full inline-block"></span>
-            <span className="text-xl font-extrabold tracking-wider text-white">WiraDana</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-xs font-semibold text-slate-300 hover:text-white px-4 py-2 transition"
-            >
-              Masuk
+        <nav className="border-b border-slate-200 bg-white/95">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+            <Link href="/" className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#714B67] text-sm font-bold text-white">W</span>
+              <span className="text-xl font-extrabold tracking-tight text-slate-900">WiraDana</span>
             </Link>
-            <Link
-              href="/register"
-              className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition shadow-lg shadow-emerald-950/50"
-            >
-              Daftar Gratis
+            <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
+              <a href="#fitur" className="transition hover:text-[#714B67]">Fitur</a>
+              <a href="#solusi" className="transition hover:text-[#714B67]">Solusi</a>
+              <a href="#tentang" className="transition hover:text-[#714B67]">Tentang</a>
+            </div>
+            <Link href="/login" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#714B67] hover:text-[#714B67]">
+              Masuk ke Akun
             </Link>
           </div>
         </nav>
 
-        <section className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/60 text-emerald-400 text-xs font-medium">
-            <Sparkles size={14} />
-            <span>Aplikasi Kontrol Keuangan Proyek & RAB Berbasis Web</span>
+        <section id="solusi" className="mx-auto max-w-6xl px-6 pb-20 pt-20 md:pb-28 md:pt-28">
+          <div className="max-w-4xl">
+            <p className="mb-5 text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Enterprise Light Mode untuk proyek yang lebih terkendali</p>
+            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-6xl">
+              Kontrol Keuangan Proyek & Estimasi RAB <span className="text-[#714B67]">Lebih Presisi</span>
+            </h1>
+            <p className="mt-6 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+              Aplikasi web desktop-first gratis untuk memantau Budget vs Actual (BVA), arus kas, dan pengeluaran proyek konstruksi/teknis secara real-time.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#714B67]/20 transition hover:bg-[#5a3b52]">
+                Mulai Sekarang (Gratis) <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/login" className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:border-[#714B67] hover:text-[#714B67]">
+                Buka Demo Proyek
+              </Link>
+            </div>
           </div>
-          
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
-            Kontrol RAB & Keuangan Proyek Lewat Laptop, <span className="text-emerald-400">100% Gratis Tanpa Ribet.</span>
-          </h1>
-
-          <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
-            Sering pusing karena proyek konstruksi atau instalasi mendadak overbudget akibat pencatatan RAB dan pengeluaran manual yang berantakan? WiraDana hadir untuk mengamankan anggaran Anda secara real-time.
-          </p>
-
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
-            <Link
-              href="/register"
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-8 py-3.5 rounded-xl text-sm transition shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-2"
-            >
-              <span>Mulai Kelola Proyek Sekarang</span>
-              <ArrowRight size={16} />
-            </Link>
-            <Link
-              href="/login"
-              className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 font-semibold px-6 py-3.5 rounded-xl text-sm transition"
-            >
-              Sudah punya akun? Masuk
-            </Link>
-          </div>
-
-          <div className="text-[11px] text-slate-500 font-mono pt-2">
-            <Lightbulb className="inline-block w-3.5 h-3.5 mr-1" /> Dirancang optimal untuk kenyamanan layar Laptop / PC (Desktop-First).
+          <div className="mt-16 grid gap-4 border-t border-slate-200 pt-8 sm:grid-cols-3">
+            {[
+              ['Real-time', 'Pantau biaya tanpa menunggu rekap manual'],
+              ['Desktop-first', 'Ruang kerja rapi untuk tim teknis'],
+              ['100% Gratis', 'Dibangun untuk komunitas lokal'],
+            ].map(([title, description]) => (
+              <div key={title}>
+                <p className="text-sm font-bold text-[#714B67]">{title}</p>
+                <p className="mt-1 text-sm text-slate-500">{description}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="max-w-5xl mx-auto px-6 py-16 border-t border-slate-900">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400">
-                <FolderKanban size={20} />
-              </div>
-              <h2 className="text-base font-bold text-white">Manajemen RAB Terstruktur</h2>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Buat daftar rincian anggaran biaya (RAB), volume, satuan, dan harga satuan secara rapi untuk setiap proyek Anda.
-              </p>
+        <section id="fitur" className="border-y border-slate-200 bg-white">
+          <div className="mx-auto max-w-6xl px-6 py-20">
+            <div className="max-w-2xl">
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Fitur inti</p>
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">Semua yang dibutuhkan untuk mengelola proyek dengan percaya diri.</h2>
             </div>
-
-            <div className="bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-sky-950 border border-sky-800 flex items-center justify-center text-sky-400">
-                <Calculator size={20} />
-              </div>
-              <h2 className="text-base font-bold text-white">Budget vs Actual (BVA)</h2>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Catat pengeluaran lapangan secara harian dan pantau selisih anggaran secara otomatis untuk mendeteksi potensi kerugian lebih awal.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400">
-                <ShieldCheck size={20} />
-              </div>
-              <h2 className="text-base font-bold text-white">100% Gratis Untuk Komunitas</h2>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Didedikasikan sepenuhnya sebagai bentuk kontribusi sosial bagi para pengelola proyek independen tanpa biaya langganan.
-              </p>
+            <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {[
+                [Calculator, 'Budget vs Actual Tracking', 'Pencatatan transaksi aktual harian memotong alokasi RAB secara otomatis untuk mencegah overbudget.'],
+                [Upload, 'Impor RAB dari CSV/Excel', 'Template dan parser CSV bawaan membantu mengunggah rencana anggaran biaya secara instan.'],
+                [Receipt, 'Penyimpanan Bukti Nota', 'Upload foto kuitansi atau nota transaksi lapangan terintegrasi dengan Supabase Storage.'],
+                [TrendingUp, 'Dashboard Finansial & Cash Flow', 'Visualisasi Total RAB, Total Pengeluaran, Sisa Anggaran, dan Proyeksi Profit dalam satu layar.'],
+                [FolderKanban, 'Full Modal Data Entry', 'Pengisian data proyek, RAB, dan pengeluaran yang rapi melalui pop-up modal dialog.'],
+                [ShieldCheck, 'Kontrol yang Transparan', 'Data proyek tersusun aman dan mudah ditinjau oleh pemilik usaha maupun tim lapangan.'],
+              ].map(([Icon, title, description]) => (
+                <article key={title as string} className="rounded-xl border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-0.5 hover:border-[#714B67]/40 hover:shadow-lg">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#714B67]/10 text-[#714B67]">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-5 text-base font-bold text-slate-900">{title as string}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{description as string}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="max-w-4xl mx-auto px-6 py-16 border-t border-slate-900 space-y-8">
-          <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-semibold uppercase tracking-wider">
-              <HelpCircle size={14} />
-              <span>Pertanyaan Umum</span>
+        <section id="tentang" className="mx-auto max-w-6xl px-6 py-20">
+          <div className="grid gap-10 rounded-2xl border border-[#714B67]/20 bg-[#714B67]/5 p-8 md:grid-cols-[1fr_auto] md:items-center md:p-12">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Donationware & komunitas</p>
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Dibangun gratis untuk membantu rekan teknis dan kontraktor lokal.</h2>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">WiraDana 100% Gratis dan Community-Driven. Jika aplikasi ini membantu pekerjaan Anda, dukung operasional server melalui QRIS / Saweria atau bagikan feedback untuk pengembangan berikutnya.</p>
             </div>
-            <h2 className="text-2xl font-bold text-white">Segala Hal Tentang WiraDana</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-xl space-y-2">
-              <h3 className="text-sm font-bold text-emerald-400">Apa itu aplikasi WiraDana?</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                WiraDana adalah aplikasi web berbasis desktop-first untuk membantu kontraktor dan manajer proyek mengelola Rencana Anggaran Biaya (RAB), mencatat pengeluaran aktual harian, serta menganalisis selisih anggaran (BVA).
-              </p>
-            </div>
-
-            <div className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-xl space-y-2">
-              <h3 className="text-sm font-bold text-emerald-400">Bagaimana cara menghitung selisih RAB dan Biaya Lapangan?</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                WiraDana secara otomatis mengalkulasi *Budget Variance Analysis (BVA)* dengan mengurangi estimasi RAB global terhadap akumulasi biaya pengeluaran lapangan riil secara real-time.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-xl space-y-2">
-              <h3 className="text-sm font-bold text-emerald-400">Apakah dokumen penawaran klien bisa dicetak?</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Ya, WiraDana menyediakan mode cetak dokumen penawaran profesional khusus klien lengkap dengan Kop Surat Perusahaan tanpa menampilkan margin atau status anggaran internal.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-xl space-y-2">
-              <h3 className="text-sm font-bold text-emerald-400">Apakah WiraDana dapat digunakan secara gratis?</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Ya, WiraDana dikembangkan secara #BuildInPublic dan dapat digunakan 100% gratis tanpa biaya langganan bulanan.
-              </p>
+            <div className="flex flex-col gap-3 sm:flex-row md:flex-col">
+              <Link href="/feedback" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#5a3b52]">
+                Dukung Operasional Server (QRIS / Saweria)
+              </Link>
+              <Link href="/feedback" className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#714B67] hover:text-[#714B67]">
+                Pusat Bantuan (Feedback)
+              </Link>
             </div>
           </div>
         </section>
 
-        <footer className="max-w-6xl mx-auto px-6 py-8 border-t border-slate-900 text-center text-xs text-slate-500">
-          <p>© 2026 WiraDana. Dibangun dengan pendekatan #BuildInPublic untuk kemandirian pengelola proyek.</p>
+        <footer className="border-t border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>© 2026 WiraDana v1.0.0. Untuk proyek yang lebih tertata.</p>
+            <div className="flex gap-5">
+              <Link href="/feedback" className="transition hover:text-[#714B67]">Feedback</Link>
+              <Link href="/login" className="transition hover:text-[#714B67]">Masuk</Link>
+            </div>
+          </div>
         </footer>
       </div>
     )
