@@ -34,7 +34,7 @@ export default function RootLayout({
   }, [])
 
   // Tentukan apakah halaman ini adalah halaman publik (Landing Page '/', '/login', '/register')
-  const isPublicPage = (pathname === '/' && !session) || pathname === '/login' || pathname === '/register'
+  const isPublicPage = (pathname === '/' && !session) || pathname === '/login' || pathname === '/register' || pathname === '/donate'
 
   if (loading) {
     return (

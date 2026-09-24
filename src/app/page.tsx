@@ -289,11 +289,11 @@ export default function LandingOrDashboard() {
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Donationware & komunitas</p>
               <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Dibangun gratis untuk membantu rekan teknis dan kontraktor lokal.</h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">WiraDana 100% Gratis dan Community-Driven. Jika aplikasi ini membantu pekerjaan Anda, dukung operasional server melalui QRIS / Saweria atau bagikan feedback untuk pengembangan berikutnya.</p>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">WiraDana 100% Gratis dan Community-Driven. Jika aplikasi ini membantu pekerjaan Anda, dukung operasional server melalui QRIS atau bagikan feedback untuk pengembangan berikutnya.</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row md:flex-col">
-              <Link href="/feedback" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#5a3b52]">
-                Dukung Operasional Server (QRIS / Saweria)
+              <Link href="/donate" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#5a3b52]">
+                Dukung Operasional Server (QRIS)
               </Link>
               <Link href="/feedback" className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-[#714B67] hover:text-[#714B67]">
                 Pusat Bantuan (Feedback)
