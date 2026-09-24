@@ -52,10 +52,10 @@ export default function LoginPage() {
     <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6 font-sans">
       <div className="w-full max-w-md bg-slate-900/80 backdrop-blur border border-slate-800 p-8 rounded-2xl shadow-xl">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
+          <Link href="/" className="inline-flex items-center justify-center gap-2 text-2xl font-extrabold tracking-tight text-white">
             <span className="bg-emerald-500 w-3 h-3 rounded-full inline-block"></span>
             WiraDana
-          </h1>
+          </Link>
           <p className="text-slate-400 text-xs mt-1">Masuk ke akun kontrol keuangan proyek Anda</p>
         </div>
 
@@ -101,6 +101,11 @@ export default function LoginPage() {
           Belum punya akun?{' '}
           <Link href="/register" className="text-emerald-400 hover:underline font-semibold">
             Daftar di sini
+          </Link>
+        </p>
+        <p className="mt-3 text-center text-xs text-slate-500">
+          <Link href="/" className="hover:text-emerald-400 hover:underline">
+            Kembali ke Landing Page
           </Link>
         </p>
       </div>
