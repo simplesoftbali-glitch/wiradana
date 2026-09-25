@@ -121,8 +121,8 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
 
       {/* Konten Sidebar (Ditambahkan kelas no-print) */}
       <aside className={`
-        no-print fixed inset-y-0 left-0 z-50 w-72 overflow-x-hidden bg-white text-slate-600 flex flex-col transition-transform duration-300 ease-in-out
-        md:translate-x-0 md:static md:inset-auto md:h-16 md:w-full md:flex-row md:items-center md:px-6 md:shadow-sm border-b border-slate-200 md:border-r-0
+        no-print fixed inset-y-0 left-0 z-40 w-72 overflow-visible bg-white text-slate-600 flex flex-col transition-transform duration-300 ease-in-out
+        md:translate-x-0 md:relative md:inset-auto md:h-16 md:w-full md:flex-row md:items-center md:px-6 md:shadow-sm border-b border-slate-200 md:border-r-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header Sidebar (Desktop) */}
@@ -185,7 +185,7 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
                 {isMenuOpen && (
                   <div
                     role="menu"
-                    className="mt-1 min-w-52 rounded-lg border border-slate-200 bg-white p-1 shadow-lg md:absolute md:left-0 md:top-full md:z-50 md:mt-2"
+                    className="absolute top-full left-0 z-50 mt-1 min-w-[180px] rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
                   >
                     {group.items.map((item) => {
                       const ItemIcon = item.icon;
