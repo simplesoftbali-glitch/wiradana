@@ -144,7 +144,7 @@ export default function ProjectsPage() {
       .insert([{
         name: 'Instalasi Smart Office & Panel Listrik (Proyek Demo)',
         description: 'Proyek sampel otomatis untuk mempelajari fitur kalkulasi BVA, RAB, dan Pengeluaran Lapangan WiraDana.',
-        status: 'SCHEDULED',
+        status: 'Scheduled',
         start_date: startDate,
         end_date: endDate,
         user_id: session.user.id
