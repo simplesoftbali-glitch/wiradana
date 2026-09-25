@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FolderOpen, Plus, Search, X } from 'lucide-react'
+import { FolderOpen, Plus, Search, Sparkles, X } from 'lucide-react'
 
 interface Project {
   id: string
@@ -24,6 +24,7 @@ export default function ProjectsPage() {
   const [status, setStatus] = useState('Scheduled')
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
+  const [isGeneratingDemo, setIsGeneratingDemo] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -124,6 +125,103 @@ export default function ProjectsPage() {
     }
   }
 
+  async function handleCreateSampleProject() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      router.push('/login')
+      return
+    }
+
+    setIsGeneratingDemo(true)
+    const today = new Date()
+    const startDate = today.toISOString().split('T')[0]
+    const endDateValue = new Date(today)
+    endDateValue.setDate(endDateValue.getDate() + 14)
+    const endDate = endDateValue.toISOString().split('T')[0]
+
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .insert([{
+        name: 'Instalasi Smart Office & Panel Listrik (Proyek Demo)',
+        description: 'Proyek sampel otomatis untuk mempelajari fitur kalkulasi BVA, RAB, dan Pengeluaran Lapangan WiraDana.',
+        status: 'In Progress',
+        start_date: startDate,
+        end_date: endDate,
+        user_id: session.user.id
+      }])
+      .select('id')
+      .single()
+
+    if (projectError || !project) {
+      setIsGeneratingDemo(false)
+      alert('Gagal membuat proyek demo: ' + (projectError?.message || 'ID proyek tidak ditemukan.'))
+      return
+    }
+
+    const projectId = project.id
+    const { error: rabError } = await supabase.from('rab_items').insert([
+      {
+        project_id: projectId,
+        name: 'Kabel NYM 3x2.5mm & Conduit',
+        category: 'Material',
+        quantity: 10,
+        unit: 'Roll',
+        unit_price: 1250000
+      },
+      {
+        project_id: projectId,
+        name: 'Panel Utama & MCB Schneider 3 Phase',
+        category: 'Peralatan',
+        quantity: 1,
+        unit: 'Set',
+        unit_price: 8000000
+      },
+      {
+        project_id: projectId,
+        name: 'Jasa Instalasi & Pengujian Sistem',
+        category: 'Jasa/Upah',
+        quantity: 1,
+        unit: 'LS',
+        unit_price: 6500000
+      }
+    ])
+
+    if (rabError) {
+      const { error: cleanupError } = await supabase.from('projects').delete().eq('id', projectId)
+      setIsGeneratingDemo(false)
+      alert(`Gagal membuat data RAB demo: ${rabError.message}${cleanupError ? ` Proyek demo juga gagal dibersihkan: ${cleanupError.message}` : ''}`)
+      return
+    }
+
+    const { error: expenseError } = await supabase.from('actual_expenses').insert([
+      {
+        project_id: projectId,
+        name: 'Pembelian Kabel NYM & Accessories',
+        amount: 8200000,
+        date: startDate,
+        category: 'Material'
+      },
+      {
+        project_id: projectId,
+        name: 'Pembayaran DP Jasa Teknisi Listrik',
+        amount: 3000000,
+        date: startDate,
+        category: 'Jasa/Upah'
+      }
+    ])
+
+    setIsGeneratingDemo(false)
+
+    if (expenseError) {
+      const { error: cleanupError } = await supabase.from('projects').delete().eq('id', projectId)
+      alert(`Gagal membuat transaksi demo: ${expenseError.message}${cleanupError ? ` Proyek demo juga gagal dibersihkan: ${cleanupError.message}` : ''}`)
+      return
+    }
+
+    alert('Proyek Demo Berhasil Dibuat!')
+    router.push(`/projects/${projectId}`)
+  }
+
   async function handleDeleteProject(projectId: string, e: React.MouseEvent) {
     e.stopPropagation()
     if (!confirm('Yakin ingin menghapus proyek ini beserta seluruh data RAB di dalamnya?')) return
@@ -157,13 +255,24 @@ export default function ProjectsPage() {
             <h1 className="text-2xl font-extrabold tracking-tight text-white mb-1">Manajemen Proyek & RAB</h1>
             <p className="text-slate-400 text-sm">Pusat pendaftaran proyek baru dan pengelolaan rincian anggaran biaya (RAB).</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsProjectModalOpen(true)}
-            className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#714B67] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#5a3b52]"
-          >
-            <Plus className="h-4 w-4" /> Buat Proyek Baru
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsProjectModalOpen(true)}
+              className="flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#5a3b52]"
+            >
+              <Plus className="h-4 w-4" /> Buat Proyek Baru
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateSampleProject}
+              disabled={isGeneratingDemo}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#714B67] bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4 text-[#714B67]" />
+              {isGeneratingDemo ? 'Memuat...' : 'Muat Proyek Demo'}
+            </button>
+          </div>
         </div>
 
         {isProjectModalOpen && (
