@@ -16,7 +16,7 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -26,9 +26,15 @@ export default function RegisterPage() {
 
       if (error) {
         alert('Gagal Mendaftar: ' + error.message)
-      } else {
-        alert('Pendaftaran berhasil! Silakan periksa email Anda jika verifikasi diaktifkan, atau langsung masuk.')
+      } else if (data.session) {
+        alert('Pendaftaran berhasil! Selamat datang di WiraDana.')
+        router.push('/')
+        router.refresh()
+      } else if (data.user) {
+        alert('Pendaftaran berhasil! Silakan masuk dengan akun Anda.')
         router.push('/login')
+      } else {
+        alert('Pendaftaran gagal: Supabase tidak mengembalikan data akun.')
       }
     } catch (error) {
       alert(`Gagal Mendaftar: ${error instanceof Error ? error.message : 'Terjadi kesalahan.'}`)
