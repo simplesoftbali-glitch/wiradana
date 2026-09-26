@@ -94,6 +94,7 @@
 /* Styling Khusus Mode Cetak / Ekspor PDF yang Bersih Mutlak */
 @media print {
   @page {
+    size: A4 portrait;
     margin: 1cm;
   }
 
@@ -142,5 +143,28 @@
   table td {
     color: #0f172a !important;
     border-bottom: 1px solid #cbd5e1 !important;
+  }
+
+  body.invoice-print-mode > div {
+    display: block !important;
+    min-height: 0 !important;
+  }
+
+  body.invoice-print-mode main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.invoice-print-mode .invoice-sheet {
+    margin: 0 auto !important;
+    width: 100% !important;
+    color: #0f172a !important;
+  }
+
+  body.invoice-print-mode .invoice-total {
+    background-color: #714b67 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

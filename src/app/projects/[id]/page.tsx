@@ -585,6 +585,12 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           </Link>
           
           <div className="no-print flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 p-1.5 shadow-lg">
+            <Link
+              href={`/projects/${projectId}/invoices`}
+              className="flex items-center justify-center gap-1.5 bg-[#714B67] hover:bg-[#5a3b52] text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg shadow-purple-900/20"
+            >
+              <Receipt className="w-4 h-4" /> Invoice / Nota
+            </Link>
             <button
               onClick={() => {
                 document.body.classList.remove('print-client-mode')

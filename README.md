@@ -27,6 +27,17 @@ To learn more about Next.js, take a look at the following resources:
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
+## Invoice / Nota Penagihan
+
+Sebelum menggunakan fitur invoice, jalankan SQL pada
+[`supabase/migrations/20260926000000_create_project_invoices.sql`](./supabase/migrations/20260926000000_create_project_invoices.sql)
+melalui Supabase SQL Editor. Migrasi ini menambahkan penyimpanan invoice, kebijakan akses
+berdasarkan pemilik proyek, serta field logo dan rekening pada profil perusahaan.
+
+Buat invoice dari halaman detail proyek. Nama klien, item/kuantitas yang ditagihkan,
+nomor invoice, syarat pembayaran, diskon, PPN, dan biaya lain-lain disimpan pada invoice;
+kop dan rekening diambil dari Pengaturan Kop dan disimpan sebagai snapshot.
+
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
 ## Deploy on Vercel

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { supabase } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -17,6 +18,10 @@ export default function CompanySettingsPage() {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [footerNote, setFooterNote] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [bankAccountNumber, setBankAccountNumber] = useState('')
+  const [bankAccountHolder, setBankAccountHolder] = useState('')
 
   useEffect(() => {
     async function fetchProfile() {
@@ -39,6 +44,10 @@ export default function CompanySettingsPage() {
         setPhone(data.phone || '')
         setEmail(data.email || '')
         setFooterNote(data.footer_note || '')
+        setLogoUrl(data.logo_url || '')
+        setBankName(data.bank_name || '')
+        setBankAccountNumber(data.bank_account_number || '')
+        setBankAccountHolder(data.bank_account_holder || '')
       }
       setLoading(false)
     }
@@ -52,7 +61,11 @@ export default function CompanySettingsPage() {
     setMessage('')
 
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
+    if (!session) {
+      setSaving(false)
+      setMessage('Sesi berakhir. Silakan masuk kembali.')
+      return
+    }
 
     const { data: existing } = await supabase
       .from('company_profiles')
@@ -71,6 +84,10 @@ export default function CompanySettingsPage() {
           phone,
           email,
           footer_note: footerNote,
+          logo_url: logoUrl,
+          bank_name: bankName,
+          bank_account_number: bankAccountNumber,
+          bank_account_holder: bankAccountHolder,
           updated_at: new Date()
         })
         .eq('user_id', session.user.id)
@@ -85,14 +102,18 @@ export default function CompanySettingsPage() {
           address,
           phone,
           email,
-          footer_note: footerNote
+          footer_note: footerNote,
+          logo_url: logoUrl,
+          bank_name: bankName,
+          bank_account_number: bankAccountNumber,
+          bank_account_holder: bankAccountHolder
         })
       error = res.error
     }
 
     setSaving(false)
     if (error) {
-      setMessage('Gagal menyimpan pengaturan.')
+      setMessage(`Gagal menyimpan pengaturan: ${error.message}`)
     } else {
       setMessage('Profil kop surat berhasil disimpan!')
     }
@@ -111,7 +132,7 @@ export default function CompanySettingsPage() {
 
         <div className="border-b border-slate-800 pb-4">
           <h1 className="text-2xl font-extrabold text-white">Pengaturan Kop Surat & Perusahaan</h1>
-          <p className="text-slate-400 text-sm">Informasi ini akan otomatis dicetak sebagai kop surat resmi pada dokumen penawaran RAB.</p>
+          <p className="text-slate-400 text-sm">Informasi kop, logo, dan rekening ini akan dicetak pada invoice serta dokumen penawaran RAB.</p>
         </div>
 
         {message && (
@@ -187,6 +208,53 @@ export default function CompanySettingsPage() {
               placeholder="Contoh: Harga penawaran berlaku selama 14 hari sejak tanggal diterbitkan."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition font-mono"
             />
+          </div>
+
+          <div className="border-t border-slate-200 pt-5 space-y-4">
+            <h2 className="text-sm font-bold text-slate-800">Informasi Invoice</h2>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">URL Logo Kop Surat</label>
+              <input
+                type="url"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://domain.com/logo.png"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
+              />
+              {logoUrl && (
+                <Image src={logoUrl} alt="Pratinjau logo perusahaan" width={192} height={56} unoptimized className="mt-3 h-14 max-w-48 object-contain" />
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Nama Bank</label>
+                <input
+                  type="text"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  placeholder="Contoh: Bank Mandiri"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Nomor Rekening</label>
+                <input
+                  type="text"
+                  value={bankAccountNumber}
+                  onChange={(e) => setBankAccountNumber(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Nama Pemilik Rekening</label>
+                <input
+                  type="text"
+                  value={bankAccountHolder}
+                  onChange={(e) => setBankAccountHolder(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="pt-4 flex justify-end">
