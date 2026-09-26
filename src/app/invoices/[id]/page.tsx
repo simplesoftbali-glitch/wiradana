@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { QRCodeSVG } from 'qrcode.react'
 import { ArrowLeft, Printer } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 
@@ -152,6 +153,7 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
   const [payment, setPayment] = useState<PaymentDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     document.body.classList.add('invoice-print-mode')
@@ -184,11 +186,24 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
         return
       }
 
+      const { data: companyProfile, error: profileError } = await supabase
+        .from('company_profiles')
+        .select('logo_url')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+      if (profileError) {
+        setNotice(`Logo terbaru tidak dapat dimuat; menampilkan logo yang tersimpan pada invoice. ${profileError.message}`)
+      }
+
       try {
         const invoiceData = data as Invoice
         const parsedLines = parseLines(invoiceData.items)
         setLines(parsedLines)
-        setCompany(parseCompanyDetails(invoiceData.company_details))
+        const companyDetails = parseCompanyDetails(invoiceData.company_details)
+        setCompany({
+          ...companyDetails,
+          logoUrl: companyProfile?.logo_url || companyDetails.logoUrl,
+        })
         setPayment(parsePaymentDetails(invoiceData.payment_details))
         setInvoice(invoiceData)
       } catch (parseError) {
@@ -226,6 +241,7 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
   const tax = taxBase * Number(invoice.tax_rate || 0) / 100
   const otherFees = Number(invoice.other_fees || 0)
   const total = taxBase + tax + otherFees
+  const verificationValue = `VALID-INVOICE:${invoice.invoice_number}|${company.companyName}|${invoice.prepared_by}`
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -242,11 +258,12 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
         </button>
       </div>
 
-      <article className="invoice-sheet bg-white p-8 text-slate-900 shadow-sm print:shadow-none">
-        <div className="grid grid-cols-1 gap-6 border-b-2 border-slate-900 pb-5 md:grid-cols-[1.2fr_0.8fr]">
+      <article className="invoice-sheet bg-white p-8 text-slate-900 shadow-sm print:p-0 print:shadow-none">
+        {notice && <p className="print:hidden mb-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">{notice}</p>}
+        <div className="invoice-header grid grid-cols-1 gap-6 border-b-2 border-slate-900 pb-5 md:grid-cols-[1.2fr_0.8fr]">
           <div className="flex items-start gap-4">
             {company.logoUrl ? (
-              <Image src={company.logoUrl} alt={`Logo ${company.companyName}`} width={112} height={80} unoptimized className="max-h-20 max-w-28 object-contain" />
+              <Image src={company.logoUrl} alt={`Logo ${company.companyName}`} width={112} height={64} unoptimized className="max-h-16 max-w-28 object-contain" />
             ) : (
               <div className="flex h-16 w-16 shrink-0 items-center justify-center border border-slate-300 text-[10px] font-bold tracking-widest text-slate-500">LOGO</div>
             )}
@@ -273,7 +290,7 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        <div className="my-5 grid grid-cols-2 gap-x-6 gap-y-3 border-b border-slate-300 pb-5 text-xs md:grid-cols-3">
+        <div className="invoice-meta-grid my-5 grid grid-cols-2 gap-x-6 gap-y-3 border-b border-slate-300 pb-5 text-xs md:grid-cols-3">
           <div><span className="font-semibold text-slate-600">Tanggal:</span><p className="mt-1 font-semibold">{formatDate(invoice.invoice_date)}</p></div>
           <div><span className="font-semibold text-slate-600">Nomor:</span><p className="mt-1 font-semibold">{invoice.invoice_number}</p></div>
           <div><span className="font-semibold text-slate-600">Syarat Pembayaran:</span><p className="mt-1 font-semibold">{invoice.payment_terms || '-'}</p></div>
@@ -285,12 +302,12 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="border-y-2 border-slate-900 bg-slate-100 text-left text-slate-900">
-                <th className="px-2 py-2.5">Kode</th>
-                <th className="px-2 py-2.5">Nama Barang / Deskripsi Pekerjaan</th>
-                <th className="px-2 py-2.5 text-right">Kts</th>
-                <th className="px-2 py-2.5 text-right">@Harga</th>
-                <th className="px-2 py-2.5 text-right">Diskon</th>
-                <th className="px-2 py-2.5 text-right">Total Harga</th>
+                <th className="px-2 py-1">Kode</th>
+                <th className="px-2 py-1">Nama Barang / Deskripsi Pekerjaan</th>
+                <th className="px-2 py-1 text-right">Kts</th>
+                <th className="px-2 py-1 text-right">@Harga</th>
+                <th className="px-2 py-1 text-right">Diskon</th>
+                <th className="px-2 py-1 text-right">Total Harga</th>
               </tr>
             </thead>
             <tbody>
@@ -299,19 +316,19 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
                 const lineDiscountAmount = gross * line.discountPercent / 100
                 return (
                   <tr key={`${line.code}-${index}`} className="break-inside-avoid border-b border-slate-300 align-top">
-                    <td className="px-2 py-3 font-mono">{line.code}</td>
-                    <td className="px-2 py-3">
+                    <td className="px-2 py-1 font-mono">{line.code}</td>
+                    <td className="px-2 py-1">
                       <span className="font-semibold">{line.name}</span>
-                      <span className="mt-1 block text-[10px] text-slate-600">
+                      <span className="block text-[10px] text-slate-600">
                         {[line.description, line.unit].filter(Boolean).join(' · ')}
                       </span>
                     </td>
-                    <td className="px-2 py-3 text-right font-mono">{line.quantity} {line.unit}</td>
-                    <td className="px-2 py-3 text-right font-mono">{formatRupiah(line.unitPrice)}</td>
-                    <td className="px-2 py-3 text-right font-mono">
+                    <td className="px-2 py-1 text-right font-mono">{line.quantity} {line.unit}</td>
+                    <td className="px-2 py-1 text-right font-mono">{formatRupiah(line.unitPrice)}</td>
+                    <td className="px-2 py-1 text-right font-mono">
                       {line.discountPercent ? `${line.discountPercent}% (${formatRupiah(lineDiscountAmount)})` : '-'}
                     </td>
-                    <td className="px-2 py-3 text-right font-mono font-semibold">{formatRupiah(gross - lineDiscountAmount)}</td>
+                    <td className="px-2 py-1 text-right font-mono font-semibold">{formatRupiah(gross - lineDiscountAmount)}</td>
                   </tr>
                 )
               })}
@@ -322,8 +339,8 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
           </table>
         </div>
 
-        <div className="mt-7 grid grid-cols-1 gap-8 md:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-5 text-xs">
+        <div className="invoice-footer print-keep-together mt-7 grid grid-cols-1 gap-8 md:grid-cols-[1.1fr_0.9fr]">
+          <div className="print-keep-together space-y-5 text-xs">
             <div>
               <p className="font-bold">Terbilang:</p>
               <p className="mt-1 rounded-md border border-slate-300 px-3 py-2 font-semibold italic capitalize">
@@ -338,14 +355,22 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
                 <p>Atas Nama: <span className="font-semibold text-slate-900">{payment.accountHolder || '-'}</span></p>
               </div>
             </div>
-            <div className="pt-2">
+            <div className="print-keep-together pt-2">
               <p className="font-bold">Disiapkan Oleh</p>
-              <div className="mt-12 min-h-8 border-b border-slate-700" />
-              <p className="mt-2 font-semibold">{invoice.prepared_by || ' '}</p>
+              <div className="mt-2">
+                <QRCodeSVG
+                  value={verificationValue}
+                  size={64}
+                  level="M"
+                  marginSize={1}
+                  aria-label="QR code verifikasi invoice"
+                />
+              </div>
+              <p className="mt-1 font-semibold">{invoice.prepared_by || '-'}</p>
             </div>
           </div>
 
-          <div className="space-y-2 text-sm">
+          <div className="print-keep-together space-y-2 text-sm">
             <div className="flex justify-between gap-4 border-b border-slate-200 py-2">
               <span>Sub Total</span><span className="font-mono">Rp {formatRupiah(subtotal)}</span>
             </div>

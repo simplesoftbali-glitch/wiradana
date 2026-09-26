@@ -31,8 +31,10 @@ To learn more about Next.js, take a look at the following resources:
 
 Sebelum menggunakan fitur invoice, jalankan SQL pada
 [`supabase/migrations/20260926000000_create_project_invoices.sql`](./supabase/migrations/20260926000000_create_project_invoices.sql)
-melalui Supabase SQL Editor. Migrasi ini menambahkan penyimpanan invoice, kebijakan akses
-berdasarkan pemilik proyek, serta field logo dan rekening pada profil perusahaan.
+dan
+[`supabase/migrations/20260926001000_add_company_logo_storage.sql`](./supabase/migrations/20260926001000_add_company_logo_storage.sql)
+melalui Supabase SQL Editor. Migrasi tersebut menambahkan penyimpanan invoice, bucket
+logo perusahaan beserta kebijakan akses, dan field logo/rekening pada profil perusahaan.
 
 Buat invoice dari halaman detail proyek. Nama klien, item/kuantitas yang ditagihkan,
 nomor invoice, syarat pembayaran, diskon, PPN, dan biaya lain-lain disimpan pada invoice;

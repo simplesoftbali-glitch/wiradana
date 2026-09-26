@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import Image from 'next/image'
 import { supabase } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -8,6 +8,7 @@ import Link from 'next/link'
 
 export default function CompanySettingsPage() {
   const router = useRouter()
+  const logoInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -19,6 +20,7 @@ export default function CompanySettingsPage() {
   const [email, setEmail] = useState('')
   const [footerNote, setFooterNote] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
   const [bankName, setBankName] = useState('')
   const [bankAccountNumber, setBankAccountNumber] = useState('')
   const [bankAccountHolder, setBankAccountHolder] = useState('')
@@ -67,6 +69,41 @@ export default function CompanySettingsPage() {
       return
     }
 
+    if (logoFile && (!['image/png', 'image/jpeg', 'image/webp'].includes(logoFile.type) || logoFile.size > 2 * 1024 * 1024)) {
+      setSaving(false)
+      setMessage('Logo harus berupa PNG, JPG, atau WebP dengan ukuran maksimal 2 MB.')
+      return
+    }
+
+    let savedLogoUrl = logoUrl
+    let uploadedLogoPath: string | null = null
+    if (logoFile) {
+      const extensionByType: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/webp': 'webp',
+      }
+      uploadedLogoPath = `${session.user.id}/${Date.now()}.${extensionByType[logoFile.type]}`
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(uploadedLogoPath, logoFile, {
+          cacheControl: '3600',
+          contentType: logoFile.type,
+          upsert: false,
+        })
+
+      if (uploadError) {
+        setSaving(false)
+        setMessage(`Gagal mengunggah logo: ${uploadError.message}`)
+        return
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(uploadedLogoPath)
+      savedLogoUrl = publicUrlData.publicUrl
+    }
+
     const { data: existing } = await supabase
       .from('company_profiles')
       .select('id')
@@ -84,7 +121,7 @@ export default function CompanySettingsPage() {
           phone,
           email,
           footer_note: footerNote,
-          logo_url: logoUrl,
+          logo_url: savedLogoUrl,
           bank_name: bankName,
           bank_account_number: bankAccountNumber,
           bank_account_holder: bankAccountHolder,
@@ -103,7 +140,7 @@ export default function CompanySettingsPage() {
           phone,
           email,
           footer_note: footerNote,
-          logo_url: logoUrl,
+          logo_url: savedLogoUrl,
           bank_name: bankName,
           bank_account_number: bankAccountNumber,
           bank_account_holder: bankAccountHolder
@@ -113,8 +150,18 @@ export default function CompanySettingsPage() {
 
     setSaving(false)
     if (error) {
-      setMessage(`Gagal menyimpan pengaturan: ${error.message}`)
+      let cleanupMessage = ''
+      if (uploadedLogoPath) {
+        const { error: cleanupError } = await supabase.storage
+          .from('company-logos')
+          .remove([uploadedLogoPath])
+        if (cleanupError) cleanupMessage = ` Gagal membersihkan unggahan logo: ${cleanupError.message}`
+      }
+      setMessage(`Gagal menyimpan pengaturan: ${error.message}${cleanupMessage}`)
     } else {
+      setLogoUrl(savedLogoUrl)
+      setLogoFile(null)
+      if (logoInputRef.current) logoInputRef.current.value = ''
       setMessage('Profil kop surat berhasil disimpan!')
     }
   }
@@ -213,16 +260,18 @@ export default function CompanySettingsPage() {
           <div className="border-t border-slate-200 pt-5 space-y-4">
             <h2 className="text-sm font-bold text-slate-800">Informasi Invoice</h2>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">URL Logo Kop Surat</label>
+              <label htmlFor="company-logo" className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Upload Logo Kop Surat (PNG, JPG, WebP; maks. 2 MB)</label>
               <input
-                type="url"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://domain.com/logo.png"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
+                ref={logoInputRef}
+                id="company-logo"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) => setLogoFile(event.target.files?.[0] || null)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
               />
+              {logoFile && <p className="mt-1 text-xs text-slate-500">Terpilih: {logoFile.name}. Simpan pengaturan untuk mengunggah logo.</p>}
               {logoUrl && (
-                <Image src={logoUrl} alt="Pratinjau logo perusahaan" width={192} height={56} unoptimized className="mt-3 h-14 max-w-48 object-contain" />
+                <Image src={logoUrl} alt="Logo perusahaan saat ini" width={192} height={64} unoptimized className="mt-3 max-h-16 max-w-48 object-contain" />
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

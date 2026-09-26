@@ -95,7 +95,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 1cm;
+    margin: 10mm;
   }
 
   body {
@@ -159,6 +159,63 @@
     margin: 0 auto !important;
     width: 100% !important;
     color: #0f172a !important;
+    font-size: 11px !important;
+  }
+
+  body.invoice-print-mode .invoice-sheet .text-xs {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+
+  body.invoice-print-mode .invoice-sheet .text-sm {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  body.invoice-print-mode .invoice-header {
+    grid-template-columns: 1.2fr 0.8fr !important;
+    gap: 1rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  body.invoice-print-mode .invoice-meta-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.5rem 1rem !important;
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  body.invoice-print-mode .invoice-footer {
+    grid-template-columns: 1.1fr 0.9fr !important;
+    gap: 1rem !important;
+    margin-top: 0.75rem !important;
+  }
+
+  body.invoice-print-mode .invoice-sheet .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem !important;
+  }
+
+  body.invoice-print-mode .invoice-sheet .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.25rem !important;
+  }
+
+  body.invoice-print-mode .print-keep-together {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-print-mode .invoice-sheet th,
+  body.invoice-print-mode .invoice-sheet td {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+    font-size: 11px !important;
+  }
+
+  body.invoice-print-mode .invoice-sheet .invoice-total {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    font-size: 12px !important;
   }
 
   body.invoice-print-mode .invoice-total {
