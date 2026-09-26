@@ -15,18 +15,25 @@ export default function RegisterPage() {
     e.preventDefault()
     setLoading(true)
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
 
-    setLoading(false)
-
-    if (error) {
-      alert('Gagal Mendaftar: ' + error.message)
-    } else {
-      alert('Pendaftaran berhasil! Silakan periksa email Anda jika verifikasi diaktifkan, atau langsung masuk.')
-      router.push('/login')
+      if (error) {
+        alert('Gagal Mendaftar: ' + error.message)
+      } else {
+        alert('Pendaftaran berhasil! Silakan periksa email Anda jika verifikasi diaktifkan, atau langsung masuk.')
+        router.push('/login')
+      }
+    } catch (error) {
+      alert(`Gagal Mendaftar: ${error instanceof Error ? error.message : 'Terjadi kesalahan.'}`)
+    } finally {
+      setLoading(false)
     }
   }
 

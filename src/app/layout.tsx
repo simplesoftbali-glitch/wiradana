@@ -3,6 +3,7 @@
 import './globals.css'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import Sidebar from '../components/Sidebar'
 
@@ -12,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -34,7 +35,11 @@ export default function RootLayout({
   }, [])
 
   // Tentukan apakah halaman ini adalah halaman publik (Landing Page '/', '/login', '/register')
-  const isPublicPage = (pathname === '/' && !session) || pathname === '/login' || pathname === '/register' || pathname === '/donate'
+  const isPublicPage = (pathname === '/' && !session)
+    || pathname === '/login'
+    || pathname === '/register'
+    || pathname === '/donate'
+    || pathname === '/auth/callback'
 
   if (loading) {
     return (
