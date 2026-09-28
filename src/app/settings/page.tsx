@@ -27,7 +27,14 @@ function downloadJSON(data: unknown, filename: string) {
 }
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak diketahui.'
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    const details = 'details' in error && typeof error.details === 'string' ? error.details : ''
+    const hint = 'hint' in error && typeof error.hint === 'string' ? error.hint : ''
+    const code = 'code' in error && typeof error.code === 'string' ? ` (${error.code})` : ''
+    return [error.message + code, details, hint].filter(Boolean).join(' — ')
+  }
+  return 'Terjadi kesalahan yang tidak diketahui.'
 }
 
 export default function BackupSettingsPage() {
@@ -129,6 +136,7 @@ export default function BackupSettingsPage() {
 
     setRestoring(true)
     setMessage(null)
+    let restoreStep = 'membaca berkas'
     try {
       const parsed: unknown = JSON.parse(await file.text())
       if (!parsed || typeof parsed !== 'object' || !('data' in parsed)) {
@@ -160,22 +168,27 @@ export default function BackupSettingsPage() {
       const profiles = withUserId(getRows('profiles', 'company_profiles'), true)
 
       if (projects.length) {
+        restoreStep = 'menyimpan proyek'
         const { error } = await supabase.from('projects').upsert(projects)
         if (error) throw error
       }
       if (rabItems.length) {
+        restoreStep = 'menyimpan item RAB'
         const { error } = await supabase.from('rab_items').upsert(rabItems)
         if (error) throw error
       }
       if (transactions.length) {
+        restoreStep = 'menyimpan transaksi pengeluaran'
         const { error } = await supabase.from('actual_expenses').upsert(transactions)
         if (error) throw error
       }
       if (invoices.length) {
+        restoreStep = 'menyimpan invoice'
         const { error } = await supabase.from('invoices').upsert(invoices)
         if (error) throw error
       }
       if (profiles.length) {
+        restoreStep = 'menyimpan profil perusahaan'
         const { error } = await supabase.from('company_profiles').upsert(profiles)
         if (error) throw error
       }
@@ -184,7 +197,7 @@ export default function BackupSettingsPage() {
       window.alert('Data berhasil dipulihkan!')
       window.location.reload()
     } catch (error) {
-      setMessage({ text: `Gagal memulihkan data: ${getErrorMessage(error)}`, isError: true })
+      setMessage({ text: `Gagal memulihkan data (${restoreStep}): ${getErrorMessage(error)}`, isError: true })
     } finally {
       setRestoring(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
