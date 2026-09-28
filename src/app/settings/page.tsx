@@ -162,7 +162,11 @@ export default function BackupSettingsPage() {
         force || 'user_id' in row ? { ...row, user_id: userId } : row
       ))
       const projects = withUserId(getRows('projects'), true)
-      const rabItems = withUserId(getRows('rab_items'))
+      const rabItems = withUserId(getRows('rab_items')).map((item) => {
+        const restoredItem = { ...item }
+        delete restoredItem.total_cost
+        return restoredItem
+      })
       const transactions = withUserId(getRows('bva_transactions', 'actual_expenses'))
       const invoices = withUserId(getRows('invoices'), true)
       const profiles = withUserId(getRows('profiles', 'company_profiles'), true)
