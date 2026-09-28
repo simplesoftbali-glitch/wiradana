@@ -19,7 +19,8 @@ import {
   LogOut,
   User,
   Settings,
-  Heart
+  Heart,
+  Database
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -63,6 +64,7 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
       icon: FileSpreadsheet,
       items: [
         { name: 'Laporan & Cash Flow', href: '/reports', icon: LineChart },
+        { name: 'Backup & Pemulihan', href: '/settings', icon: Database },
         { name: 'Pengaturan Kop', href: '/settings/company', icon: Settings },
       ],
     },

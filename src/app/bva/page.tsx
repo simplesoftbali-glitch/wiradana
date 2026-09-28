@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { exportToExcel } from '../../lib/exportUtils'
+import { fetchAllRows } from '../../lib/supabasePagination'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FileSpreadsheet, Printer } from 'lucide-react'
+import { Download, FileSpreadsheet, Printer } from 'lucide-react'
 
 interface ProjectBvaSummary {
   id: string
@@ -117,6 +118,74 @@ export default function BvaAnalysisPage() {
     }
   }
 
+  async function handleExportBvaCSV() {
+    try {
+      const projectIds = projectSummaries.map((project) => project.id)
+      const rabItems: { project_id: string; category: string | null; total_cost: number | null }[] = []
+      const actualItems: { project_id: string; category: string | null; amount: number | null }[] = []
+
+      for (let index = 0; index < projectIds.length; index += 100) {
+        const projectIdBatch = projectIds.slice(index, index + 100)
+        const [rabBatch, actualBatch] = await Promise.all([
+          fetchAllRows((from, to) => supabase
+            .from('rab_items')
+            .select('project_id, category, total_cost')
+            .in('project_id', projectIdBatch)
+            .range(from, to)),
+          fetchAllRows((from, to) => supabase
+            .from('actual_expenses')
+            .select('project_id, category, amount')
+            .in('project_id', projectIdBatch)
+            .range(from, to)),
+        ])
+        rabItems.push(...rabBatch)
+        actualItems.push(...actualBatch)
+      }
+
+      const csvRows = [
+        ['Nama Proyek', 'Kategori', 'Total RAB', 'Total Pengeluaran', 'Selisih', 'Status'],
+      ]
+
+      projectSummaries.forEach((project) => {
+        const categories = new Set([
+          ...rabItems.filter((item) => item.project_id === project.id).map((item) => item.category?.trim() || 'Tanpa kategori'),
+          ...actualItems.filter((item) => item.project_id === project.id).map((item) => item.category?.trim() || 'Tanpa kategori'),
+        ])
+        if (categories.size === 0) categories.add('-')
+
+        categories.forEach((category) => {
+          const totalRab = rabItems
+            .filter((item) => item.project_id === project.id && (item.category?.trim() || 'Tanpa kategori') === category)
+            .reduce((total, item) => total + Number(item.total_cost || 0), 0)
+          const totalExpense = actualItems
+            .filter((item) => item.project_id === project.id && (item.category?.trim() || 'Tanpa kategori') === category)
+            .reduce((total, item) => total + Number(item.amount || 0), 0)
+          const variance = totalRab - totalExpense
+          csvRows.push([
+            project.name,
+            category,
+            String(totalRab),
+            String(totalExpense),
+            String(variance),
+            variance >= 0 ? 'Surplus / Sisa' : 'Defisit',
+          ])
+        })
+      })
+
+      const escapeCsvCell = (value: string) => `"${value.replace(/"/g, '""')}"`
+      const csv = `\uFEFF${csvRows.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')}`
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `WiraDana_Rekap_BVA_${new Date().toISOString().slice(0, 10)}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      alert(`Gagal mengekspor rekap BVA: ${error instanceof Error ? error.message : 'Terjadi kesalahan.'}`)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 p-12 flex items-center justify-center font-mono text-sm">
@@ -145,6 +214,12 @@ export default function BvaAnalysisPage() {
             className="no-print bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5"
           >
             <FileSpreadsheet className="w-4 h-4 mr-2" /> Ekspor Rekap BVA (Excel)
+          </button>
+          <button
+            onClick={handleExportBvaCSV}
+            className="no-print flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 cursor-pointer"
+          >
+            <Download className="w-4 h-4" /> Ekspor CSV
           </button>
         </div>
 
