@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase } from '../lib/supabase'; // Sesuaikan jalur relatif jika diperlukan
+import { supabase } from '../lib/supabase';
 import { 
   LayoutDashboard, 
   FolderKanban, 
@@ -30,7 +30,8 @@ interface SidebarProps {
 export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(initialUserEmail || null);
+  const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(null);
+  const userEmail = initialUserEmail || sessionUserEmail;
   const pathname = usePathname();
   const router = useRouter();
 
@@ -40,12 +41,10 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
       async function getUserSession() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.email) {
-          setUserEmail(session.user.email);
+          setSessionUserEmail(session.user.email);
         }
       }
       getUserSession();
-    } else {
-      setUserEmail(initialUserEmail);
     }
   }, [initialUserEmail]);
 
@@ -218,7 +217,7 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
         </nav>
 
         {/* Tombol Logout & Footer */}
-        <div className="p-4 md:order-5 md:p-0 md:ml-3 border-t border-slate-200 space-y-3 md:border-t-0 md:shrink-0">
+        <div className="flex flex-col gap-3 border-t border-slate-200 p-4 md:order-5 md:ml-3 md:flex-row md:items-center md:border-t-0 md:p-0 md:shrink-0">
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 hover:text-rose-800 px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer md:w-auto"
@@ -227,8 +226,18 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
             <LogOut size={16} />
             <span className="md:hidden">Keluar (Logout)</span>
           </button>
-          <div className="hidden text-[10px] text-slate-400 text-center font-mono">
-            WiraDana Mobile v1.0
+          <div className="flex items-center justify-between gap-3 md:flex-col md:items-start md:gap-1">
+            <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-500">
+              WiraDana v1.1.0
+            </span>
+            <Link
+              href="/settings"
+              onClick={closeMenus}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#714B67] transition hover:text-[#5a3b52]"
+            >
+              <Database className="h-3.5 w-3.5" />
+              Backup Data
+            </Link>
           </div>
         </div>
       </aside>

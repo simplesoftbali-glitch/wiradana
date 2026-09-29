@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -9,6 +10,8 @@ import {
   ArrowRight,
   BarChart3,
   Calculator,
+  Database,
+  FileSpreadsheet,
   FolderKanban,
   Receipt,
   TrendingUp,
@@ -36,14 +39,15 @@ interface ChartItem {
 
 export default function LandingOrDashboard() {
   const router = useRouter()
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Data ringkasan jika sudah login
-  const [projectsCount, setProjectsCount] = useState(0)
+  const [activeProjectCount, setActiveProjectCount] = useState(0)
   const [recentProjects, setRecentProjects] = useState<Project[]>([])
   const [totalRabGlobal, setTotalRabGlobal] = useState(0)
   const [totalActualGlobal, setTotalActualGlobal] = useState(0)
+  const [projectHealth, setProjectHealth] = useState({ onTrack: 0, warning: 0, overbudget: 0 })
   const [chartData, setChartData] = useState<ChartItem[]>([])
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
@@ -116,19 +120,48 @@ export default function LandingOrDashboard() {
           .order('created_at', { ascending: false })
 
         if (projData) {
-          setProjectsCount(projData.length)
           setRecentProjects(projData.slice(0, 5))
+          const activeProjects = projData.filter((project) => project.status !== 'Closed' && project.status !== 'On Hold')
+          const activeProjectIds = new Set(activeProjects.map((project) => project.id))
+          setActiveProjectCount(activeProjects.length)
 
           // Ambil Data RAB dan Pengeluaran untuk Grafik BVA
           const { data: rabData } = await supabase.from('rab_items').select('project_id, total_cost')
           const { data: expData } = await supabase.from('actual_expenses').select('project_id, amount')
 
-          // Hitung Global Total
-          const rabSum = rabData?.reduce((acc: number, curr: { total_cost: number | null }) => acc + (curr.total_cost || 0), 0) || 0
-          const expSum = expData?.reduce((acc: number, curr: { amount: number | null }) => acc + (curr.amount || 0), 0) || 0
+          // Hitung agregat hanya dari proyek yang masih aktif
+          const rabSum = rabData
+            ?.filter((item) => activeProjectIds.has(item.project_id))
+            .reduce((acc: number, curr: { total_cost: number | null }) => acc + (curr.total_cost || 0), 0) || 0
+          const expSum = expData
+            ?.filter((item) => activeProjectIds.has(item.project_id))
+            .reduce((acc: number, curr: { amount: number | null }) => acc + (curr.amount || 0), 0) || 0
 
           setTotalRabGlobal(rabSum)
           setTotalActualGlobal(expSum)
+
+          const health = activeProjects.reduce(
+            (counts, project) => {
+              const projectRab = rabData
+                ?.filter((item) => item.project_id === project.id)
+                .reduce((total, item) => total + (item.total_cost || 0), 0) || 0
+              const projectActual = expData
+                ?.filter((item) => item.project_id === project.id)
+                .reduce((total, item) => total + (item.amount || 0), 0) || 0
+
+              if (projectActual > projectRab) {
+                counts.overbudget += 1
+              } else if (projectRab > 0 && projectActual / projectRab >= 0.8) {
+                counts.warning += 1
+              } else {
+                counts.onTrack += 1
+              }
+
+              return counts
+            },
+            { onTrack: 0, warning: 0, overbudget: 0 }
+          )
+          setProjectHealth(health)
 
           // Susun Data Per Proyek untuk Grafik
           const formattedChartData: ChartItem[] = projData.slice(0, 6).map((proj) => {
@@ -317,6 +350,7 @@ export default function LandingOrDashboard() {
 
   // JIKA PENGGUNA SUDAH LOGIN: Dashboard Utama (Lengkap dengan Grafik BVA)
   const globalVariance = totalRabGlobal - totalActualGlobal
+  const aggregateProfitMargin = totalRabGlobal > 0 ? (globalVariance / totalRabGlobal) * 100 : 0
 
   return (
     <div className="w-full">
@@ -339,32 +373,61 @@ export default function LandingOrDashboard() {
         </header>
 
         <div className="space-y-8">
-          {/* Kartu Finansial Makro */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 p-6 rounded-2xl shadow-xl">
-              <span className="text-xs text-slate-400 block uppercase tracking-wider mb-2">Total Proyek Aktif</span>
-              <span className="text-3xl font-extrabold text-white font-mono">{projectsCount}</span>
-              <span className="text-[11px] text-slate-500 block mt-2">Portofolio dalam pengawasan</span>
-            </div>
-            
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-800 p-6 rounded-2xl shadow-xl">
-              <span className="text-xs text-slate-400 block uppercase tracking-wider mb-2">Akumulasi RAB Global</span>
-              <span className="text-2xl font-extrabold text-emerald-400 font-mono">
-                Rp {totalRabGlobal.toLocaleString('id-ID')}
-              </span>
-              <span className="text-[11px] text-slate-500 block mt-2">Total rencana anggaran</span>
+          {/* Executive Summary Board */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500">Total Nilai Proyek</span>
+              <span className="font-mono text-2xl font-bold text-slate-900">Rp {totalRabGlobal.toLocaleString('id-ID')}</span>
+              <span className="mt-2 block text-[11px] text-slate-500">{activeProjectCount} proyek aktif · total RAB</span>
             </div>
 
-            <div className={`bg-slate-900/80 backdrop-blur border p-6 rounded-2xl shadow-xl ${globalVariance >= 0 ? 'border-slate-800' : 'border-red-500/50 bg-red-950/10'}`}>
-              <span className="text-xs text-slate-400 block uppercase tracking-wider mb-2">Status Anggaran Makro</span>
-              <span className={`text-2xl font-extrabold font-mono ${globalVariance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                Rp {Math.abs(globalVariance).toLocaleString('id-ID')}
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500">Total Pengeluaran Realisasi</span>
+              <span className="font-mono text-2xl font-bold text-slate-900">Rp {totalActualGlobal.toLocaleString('id-ID')}</span>
+              <span className="mt-2 block text-[11px] text-slate-500">Akumulasi pengeluaran proyek aktif</span>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500">Profit Margin Agregat</span>
+              <span className={`font-mono text-2xl font-bold ${aggregateProfitMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                {aggregateProfitMargin.toFixed(1)}%
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase inline-block mt-2 ${globalVariance >= 0 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800'}`}>
-                {globalVariance >= 0 ? 'Keseluruhan Aman (Sisa)' : 'Defisit Global (Overbudget)'}
-              </span>
+              <span className="mt-2 block text-[11px] text-slate-500">Estimasi keuntungan dari selisih RAB dan realisasi</span>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <span className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-500">Kesehatan Proyek</span>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <span className="block text-xl font-bold text-emerald-700">{projectHealth.onTrack}</span>
+                  <span className="text-[10px] font-medium text-slate-500">On Track</span>
+                </div>
+                <div>
+                  <span className="block text-xl font-bold text-amber-600">{projectHealth.warning}</span>
+                  <span className="text-[10px] font-medium text-slate-500">Warning</span>
+                </div>
+                <div>
+                  <span className="block text-xl font-bold text-red-700">{projectHealth.overbudget}</span>
+                  <span className="text-[10px] font-medium text-slate-500">Overbudget</span>
+                </div>
+              </div>
+              <span className="mt-2 block text-[10px] text-slate-400">Warning mulai pada 80% RAB</span>
             </div>
           </div>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">Aksi Cepat</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link href="/settings" className="inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700 transition hover:border-[#714B67]/40 hover:bg-purple-50 hover:text-[#714B67]">
+                <Database className="h-4 w-4 shrink-0" />
+                Cadangkan Data (JSON)
+              </Link>
+              <Link href="/bva" className="inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700 transition hover:border-[#714B67]/40 hover:bg-purple-50 hover:text-[#714B67]">
+                <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                Unduh Rekap BVA (CSV)
+              </Link>
+            </div>
+          </section>
 
           {/* Seksi Visualisasi Grafik Analisis BVA */}
           <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl space-y-4">
