@@ -253,7 +253,7 @@ export default function LandingOrDashboard() {
               <a href="#tentang" className="transition hover:text-[#714B67]">Tentang</a>
             </div>
             <Link href="/login" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#714B67] hover:text-[#714B67]">
-              Masuk ke Akun
+              Masuk
             </Link>
           </div>
         </nav>
@@ -262,25 +262,25 @@ export default function LandingOrDashboard() {
           <div className="max-w-4xl">
             <p className="mb-5 text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Enterprise Light Mode untuk proyek yang lebih terkendali</p>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-6xl">
-              Kontrol Keuangan Proyek & Estimasi RAB <span className="text-[#714B67]">Lebih Presisi</span>
+              Aplikasi Kontrol Keuangan Proyek & Pemantauan RAB Berbasis Desktop-First
             </h1>
             <p className="mt-6 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
-              Aplikasi web desktop-first gratis untuk memantau Budget vs Actual (BVA), arus kas, dan pengeluaran proyek konstruksi/teknis secara real-time.
+              Kelola Rencana Anggaran Biaya (RAB), pantau pengeluaran aktual (BVA) secara real-time, buat Invoice profesional A4, dan cadangkan data Anda secara independen. 100% Gratis untuk Komunitas.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#714B67]/20 transition hover:bg-[#5a3b52]">
-                Mulai Sekarang (Gratis) <ArrowRight className="h-4 w-4" />
+                Coba Sekarang <ArrowRight className="h-4 w-4" />
               </Link>
               <Link href="/login" className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:border-[#714B67] hover:text-[#714B67]">
-                Buka Demo Proyek
+                Masuk
               </Link>
             </div>
           </div>
           <div className="mt-16 grid gap-4 border-t border-slate-200 pt-8 sm:grid-cols-3">
             {[
-              ['Real-time', 'Pantau biaya tanpa menunggu rekap manual'],
-              ['Desktop-first', 'Ruang kerja rapi untuk tim teknis'],
-              ['100% Gratis', 'Dibangun untuk komunitas lokal'],
+              ['Kontrol Mandiri', 'Ekspor dan pulihkan backup data kapan saja'],
+              ['Desktop-first', 'Ruang kerja rapi untuk pengelolaan proyek'],
+              ['100% Gratis', 'Tanpa biaya berlangganan untuk komunitas'],
             ].map(([title, description]) => (
               <div key={title}>
                 <p className="text-sm font-bold text-[#714B67]">{title}</p>
@@ -298,12 +298,12 @@ export default function LandingOrDashboard() {
             </div>
             <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {[
-                [Calculator, 'Budget vs Actual Tracking', 'Pencatatan transaksi aktual harian memotong alokasi RAB secara otomatis untuk mencegah overbudget.'],
-                [Upload, 'Impor RAB dari CSV/Excel', 'Template dan parser CSV bawaan membantu mengunggah rencana anggaran biaya secara instan.'],
-                [Receipt, 'Penyimpanan Bukti Nota', 'Upload foto kuitansi atau nota transaksi lapangan terintegrasi dengan Supabase Storage.'],
-                [TrendingUp, 'Dashboard Finansial & Cash Flow', 'Visualisasi Total RAB, Total Pengeluaran, Sisa Anggaran, dan Proyeksi Profit dalam satu layar.'],
-                [FolderKanban, 'Full Modal Data Entry', 'Pengisian data proyek, RAB, dan pengeluaran yang rapi melalui pop-up modal dialog.'],
-                [ShieldCheck, 'Kontrol yang Transparan', 'Data proyek tersusun aman dan mudah ditinjau oleh pemilik usaha maupun tim lapangan.'],
+                [Calculator, 'Budget vs. Actual (BVA) Tracking', 'Pantau selisih anggaran aktual harian dan dapatkan sistem peringatan dini overbudget.'],
+                [Upload, 'Impor & Kelola RAB', 'Input rincian anggaran proyek secara cepat dengan dukungan kategorisasi material dan upah.'],
+                [Receipt, 'Cetak Invoice A4 & Digital QR', 'Buat faktur tagihan siap cetak A4 lengkap dengan logo kustom kop surat dan QR Code Tanda Tangan Digital.'],
+                [ShieldCheck, 'Backup & Restore Data (JSON)', 'Kontrol penuh atas data Anda. Ekspor cadangan seluruh proyek dalam format JSON dan restore kapan saja.'],
+                [TrendingUp, 'Executive Analytics Board', 'Lihat profit margin agregat, estimasi margin keuntungan, dan indikator kesehatan seluruh portofolio proyek.'],
+                [FileSpreadsheet, 'Ekspor Laporan CSV/Excel', 'Unduh laporan rekapitulasi BVA harian dan bulanan untuk analisis tingkat lanjut di Spreadsheet.'],
               ].map(([Icon, title, description]) => (
                 <article key={title as string} className="rounded-xl border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-0.5 hover:border-[#714B67]/40 hover:shadow-lg">
                   <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#714B67]/10 text-[#714B67]">
@@ -321,8 +321,8 @@ export default function LandingOrDashboard() {
           <div className="grid gap-10 rounded-2xl border border-[#714B67]/20 bg-[#714B67]/5 p-8 md:grid-cols-[1fr_auto] md:items-center md:p-12">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Donationware & komunitas</p>
-              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Dibangun gratis untuk membantu rekan teknis dan kontraktor lokal.</h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">WiraDana 100% Gratis dan Community-Driven. Jika aplikasi ini membantu pekerjaan Anda, dukung operasional server melalui QRIS atau bagikan feedback untuk pengembangan berikutnya.</p>
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Sepenuhnya Gratis & Tanpa Biaya Berlangganan</h2>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">Dikembangkan secara community-driven untuk pengelola proyek, kontraktor skala menengah dan kecil, serta teknisi lapangan. Jika WiraDana membantu pekerjaan Anda, dukung operasional server melalui QRIS atau bagikan feedback untuk pengembangan berikutnya.</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row md:flex-col">
               <Link href="/donate" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#5a3b52]">
@@ -337,7 +337,8 @@ export default function LandingOrDashboard() {
 
         <footer className="border-t border-slate-200 bg-white">
           <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>© 2026 WiraDana v1.0.0. Untuk proyek yang lebih tertata.</p>
+            <p>© 2026 WiraDana. Untuk proyek yang lebih tertata.</p>
+            <span className="w-fit rounded-full border border-[#714B67]/20 bg-[#714B67]/5 px-3 py-1 text-xs font-semibold text-[#714B67]">WiraDana v1.1.0</span>
             <div className="flex gap-5">
               <Link href="/feedback" className="transition hover:text-[#714B67]">Feedback</Link>
               <Link href="/login" className="transition hover:text-[#714B67]">Masuk</Link>
