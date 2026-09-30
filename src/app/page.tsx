@@ -25,7 +25,6 @@ import BvaChart from '../components/BvaChart'
 interface Project {
   id: string
   name: string
-  description?: string
   start_date: string
   end_date: string
   status: string
@@ -41,6 +40,7 @@ export default function LandingOrDashboard() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
 
   // Data ringkasan jika sudah login
   const [activeProjectCount, setActiveProjectCount] = useState(0)
@@ -109,46 +109,52 @@ export default function LandingOrDashboard() {
 
   useEffect(() => {
     async function checkUserAndFetch() {
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) throw sessionError
+        setSession(session)
 
-      if (session) {
-        // Ambil Data Proyek
-        const { data: projData } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false })
+        if (session) {
+          const [projectsResult, rabResult, expenseResult] = await Promise.all([
+            supabase
+              .from('projects')
+              .select('id, name, start_date, end_date, status')
+              .order('created_at', { ascending: false }),
+            supabase.from('rab_items').select('project_id, total_cost'),
+            supabase.from('actual_expenses').select('project_id, amount'),
+          ])
+          const queryError = projectsResult.error ?? rabResult.error ?? expenseResult.error
+          if (queryError) throw queryError
 
-        if (projData) {
-          setRecentProjects(projData.slice(0, 5))
+          const projData = projectsResult.data ?? []
+          const rabData = rabResult.data ?? []
+          const expData = expenseResult.data ?? []
           const activeProjects = projData.filter((project) => project.status !== 'Closed' && project.status !== 'On Hold')
-          const activeProjectIds = new Set(activeProjects.map((project) => project.id))
+          const totalsByProject = new Map<string, { rab: number; actual: number }>()
+          const getProjectTotals = (projectId: string) => {
+            let totals = totalsByProject.get(projectId)
+            if (!totals) {
+              totals = { rab: 0, actual: 0 }
+              totalsByProject.set(projectId, totals)
+            }
+            return totals
+          }
+
+          for (const item of rabData) {
+            getProjectTotals(item.project_id).rab += item.total_cost || 0
+          }
+          for (const item of expData) {
+            getProjectTotals(item.project_id).actual += item.amount || 0
+          }
+
+          setRecentProjects(projData.slice(0, 5))
           setActiveProjectCount(activeProjects.length)
-
-          // Ambil Data RAB dan Pengeluaran untuk Grafik BVA
-          const { data: rabData } = await supabase.from('rab_items').select('project_id, total_cost')
-          const { data: expData } = await supabase.from('actual_expenses').select('project_id, amount')
-
-          // Hitung agregat hanya dari proyek yang masih aktif
-          const rabSum = rabData
-            ?.filter((item) => activeProjectIds.has(item.project_id))
-            .reduce((acc: number, curr: { total_cost: number | null }) => acc + (curr.total_cost || 0), 0) || 0
-          const expSum = expData
-            ?.filter((item) => activeProjectIds.has(item.project_id))
-            .reduce((acc: number, curr: { amount: number | null }) => acc + (curr.amount || 0), 0) || 0
-
-          setTotalRabGlobal(rabSum)
-          setTotalActualGlobal(expSum)
+          setTotalRabGlobal(activeProjects.reduce((total, project) => total + getProjectTotals(project.id).rab, 0))
+          setTotalActualGlobal(activeProjects.reduce((total, project) => total + getProjectTotals(project.id).actual, 0))
 
           const health = activeProjects.reduce(
             (counts, project) => {
-              const projectRab = rabData
-                ?.filter((item) => item.project_id === project.id)
-                .reduce((total, item) => total + (item.total_cost || 0), 0) || 0
-              const projectActual = expData
-                ?.filter((item) => item.project_id === project.id)
-                .reduce((total, item) => total + (item.amount || 0), 0) || 0
-
+              const { rab: projectRab, actual: projectActual } = getProjectTotals(project.id)
               if (projectActual > projectRab) {
                 counts.overbudget += 1
               } else if (projectRab > 0 && projectActual / projectRab >= 0.8) {
@@ -156,34 +162,27 @@ export default function LandingOrDashboard() {
               } else {
                 counts.onTrack += 1
               }
-
               return counts
             },
             { onTrack: 0, warning: 0, overbudget: 0 }
           )
           setProjectHealth(health)
 
-          // Susun Data Per Proyek untuk Grafik
-          const formattedChartData: ChartItem[] = projData.slice(0, 6).map((proj) => {
-            const projRab = rabData
-              ?.filter((r) => r.project_id === proj.id)
-              .reduce((acc, curr) => acc + (curr.total_cost || 0), 0) || 0
-
-            const projExp = expData
-              ?.filter((e) => e.project_id === proj.id)
-              .reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0
-
+          setChartData(projData.slice(0, 6).map((project) => {
+            const { rab, actual } = getProjectTotals(project.id)
             return {
-              name: proj.name.length > 12 ? proj.name.substring(0, 12) + '...' : proj.name,
-              RAB: projRab,
-              Aktual: projExp,
+              name: project.name.length > 12 ? `${project.name.substring(0, 12)}...` : project.name,
+              RAB: rab,
+              Aktual: actual,
             }
-          })
-
-          setChartData(formattedChartData)
+          }))
         }
+      } catch (error) {
+        console.error('Gagal memuat ringkasan dashboard:', error)
+        setDashboardError(error instanceof Error ? error.message : 'Gagal memuat data dashboard.')
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     checkUserAndFetch()
@@ -372,6 +371,12 @@ export default function LandingOrDashboard() {
             <Plus className="h-4 w-4" /> Buat Proyek Baru
           </button>
         </header>
+
+        {dashboardError && (
+          <div role="alert" className="mb-6 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+            Gagal memuat ringkasan dashboard: {dashboardError}
+          </div>
+        )}
 
         <div className="space-y-8">
           {/* Executive Summary Board */}

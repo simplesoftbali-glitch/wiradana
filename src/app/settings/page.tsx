@@ -16,6 +16,21 @@ interface BackupData {
   profiles: BackupRow[]
 }
 
+const v120RoadmapItems = [
+  {
+    title: 'Multi-Satuan RAB & Kategori Custom',
+    description: 'Dukungan berbagai satuan pada item RAB dan pengelompokan kategori yang dapat disesuaikan.',
+  },
+  {
+    title: 'Audit Trail Pengeluaran BVA',
+    description: 'Riwayat perubahan transaksi pengeluaran untuk membantu penelusuran aktivitas dan audit.',
+  },
+  {
+    title: 'Template Layout Invoice Tambahan',
+    description: 'Pilihan tata letak invoice tambahan untuk menyesuaikan kebutuhan dokumen proyek.',
+  },
+] as const
+
 function downloadJSON(data: unknown, filename: string) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -228,6 +243,22 @@ export default function BackupSettingsPage() {
           {message.text}
         </div>
       )}
+
+      <section aria-labelledby="v120-roadmap-title" className="rounded-lg border border-[#714B67]/20 bg-[#714B67]/5 p-6">
+        <div className="mb-4">
+          <h2 id="v120-roadmap-title" className="text-base font-semibold text-slate-900">Rencana Jalan WiraDana v1.2.0</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">Daftar fitur yang disiapkan untuk rilis berikutnya.</p>
+        </div>
+        <ul className="grid gap-3 md:grid-cols-3">
+          {v120RoadmapItems.map((item) => (
+            <li key={item.title} className="rounded-lg border border-slate-200 bg-white p-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#714B67]">Direncanakan</span>
+              <h3 className="mt-2 text-sm font-semibold text-slate-900">{item.title}</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{item.description}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-start gap-4">
