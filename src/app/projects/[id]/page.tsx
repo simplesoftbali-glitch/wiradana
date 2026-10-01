@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { exportToExcel } from '../../../lib/exportUtils'
+import { hasUnitMismatch } from '../../../lib/unitMismatch'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
+  AlertTriangle,
   ClipboardList,
   Download,
   Eye,
@@ -43,6 +45,7 @@ interface ActualExpense {
   date: string
   name: string
   category: string
+  unit: string | null
   amount: number
   receipt_url: string | null
 }
@@ -57,6 +60,10 @@ interface CompanyProfile {
 }
 
 const DEFAULT_SUGGESTIONS = [
+  'Material',
+  'Upah',
+  'Alat',
+  'Operasional',
   'Pekerjaan Persiapan',
   'Pekerjaan Pondasi & Struktur',
   'Pekerjaan Dinding & Pasangan',
@@ -65,6 +72,8 @@ const DEFAULT_SUGGESTIONS = [
   'Pekerjaan Elektrikal & Sanitasi',
   'Pekerjaan Lain-lain'
 ]
+
+const UNIT_PRESETS = ['m', 'm²', 'm³', 'kg', 'zak', 'unit', 'set', 'ls', 'oh', 'bh', 'lonjor', 'titik']
 
 export default function ProjectDetail({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -78,7 +87,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [activeTab, setActiveTab] = useState<'rab' | 'actual' | 'overview'>('rab')
   const [loading, setLoading] = useState(false)
   const [loadingExpense, setLoadingExpense] = useState(false)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
 
   // State Modal Impor CSV
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -109,6 +117,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [editExpDate, setEditExpDate] = useState('')
   const [editExpName, setEditExpName] = useState('')
   const [editExpCategory, setEditExpCategory] = useState('')
+  const [editExpUnit, setEditExpUnit] = useState('')
   const [editExpAmount, setEditExpAmount] = useState('')
 
   // Form State RAB Item Baru
@@ -122,6 +131,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   // Form State Biaya Aktual
   const [expName, setExpName] = useState('')
   const [expCategory, setExpCategory] = useState('')
+  const [expUnit, setExpUnit] = useState('')
   const [expAmount, setExpAmount] = useState('')
   const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0])
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
@@ -130,7 +140,8 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const existingCategories = Array.from(
     new Set([
       ...DEFAULT_SUGGESTIONS,
-      ...rabItems.map((item) => item.category).filter(Boolean)
+      ...rabItems.map((item) => item.category).filter(Boolean),
+      ...actualExpenses.map((expense) => expense.category).filter(Boolean),
     ])
   )
 
@@ -169,14 +180,12 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     }
   }
 
-  async function fetchProjectData() {
+  const fetchProjectData = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       router.push('/login')
       return
     }
-
-    setUserEmail(session.user.email || null)
 
     const { data: projData, error: projError } = await supabase
       .from('projects')
@@ -219,11 +228,14 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     if (compData) {
       setCompanyProfile(compData)
     }
-  }
+  }, [projectId, router])
 
   useEffect(() => {
-    fetchProjectData()
-  }, [projectId, router])
+    const timeoutId = window.setTimeout(() => {
+      void fetchProjectData()
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [fetchProjectData])
 
   async function handleUpdateProject(e: React.FormEvent) {
     e.preventDefault()
@@ -288,6 +300,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         date: editExpDate,
         name: editExpName,
         category: editExpCategory,
+        unit: editExpUnit.trim() || null,
         amount: amount,
       })
       .eq('id', expId)
@@ -488,6 +501,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
           project_id: projectId,
           name: expName,
           category: expCategory,
+          unit: expUnit.trim() || null,
           amount: parseFloat(expAmount),
           date: expDate,
           receipt_url: receiptUrl
@@ -500,6 +514,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
       setExpName('')
       setExpCategory('')
+      setExpUnit('')
       setExpAmount('')
       setReceiptFile(null)
       fetchProjectData()
@@ -556,6 +571,8 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             Tanggal: expense.date,
             Keterangan: expense.name,
             Kategori: expense.category || '-',
+            Satuan: expense.unit || '-',
+            'Mismatch Satuan': hasUnitMismatch(expense, rabItems) ? 'Ya' : 'Tidak',
             Jumlah: formatCurrency(expense.amount),
           })),
         },
@@ -578,6 +595,12 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
   return (
     <div className="w-full">
+      <datalist id="rab-category-presets">
+        {existingCategories.map((cat) => <option key={cat} value={cat} />)}
+      </datalist>
+      <datalist id="unit-presets">
+        {UNIT_PRESETS.map((preset) => <option key={preset} value={preset} />)}
+      </datalist>
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <Link href="/projects" className="no-print text-sm text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1.5 transition">
@@ -836,23 +859,23 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                     <button type="button" onClick={() => setIsRabModalOpen(false)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Tutup dialog"><X className="h-5 w-5" /></button>
                   </div>
                   <form onSubmit={handleAddRab} className="space-y-4">
-          <h2 className="text-lg font-semibold mb-4 text-emerald-400 flex items-center gap-2">
+          <h2 className="text-lg font-semibold mb-4 text-emerald-700 flex items-center gap-2">
             <Plus className="w-4 h-4 mr-1.5 inline" /> Tambah Item RAB (Rencana)
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Nama Item / Pekerjaan</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Nama Item / Pekerjaan</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Contoh: Kabel NYM 3x2.5 / Cor Beton K-225"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Sub-Kategori Pekerjaan</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Sub-Kategori Pekerjaan</label>
               <div className="space-y-2">
                 <select
                   value={category}
@@ -862,7 +885,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                       setCustomCategory('')
                     }
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 transition"
                 >
                   <option value="">-- Pilih atau Tambah Kategori --</option>
                   {existingCategories.map((cat) => (
@@ -877,48 +900,49 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                     value={customCategory}
                     onChange={(e) => setCustomCategory(e.target.value)}
                     placeholder="Ketik nama kategori baru..."
-                    className="w-full bg-slate-950 border border-emerald-800/80 rounded-lg px-3 py-2 text-xs text-emerald-400 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
+                    className="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-xs text-emerald-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
                   />
                 )}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Satuan (Unit)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Satuan (Unit)</label>
               <input
                 type="text"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                placeholder="m3 / m2 / Pcs"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
+                list="unit-presets"
+                placeholder="Pilih atau ketik satuan"
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Volume (Qty)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Volume (Qty)</label>
               <input
                 type="number"
                 step="any"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="5"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition font-mono"
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition font-mono"
                 required
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Harga Satuan (Rp)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Harga Satuan (Rp)</label>
               <input
                 type="number"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
                 placeholder="150000"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition font-mono"
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition font-mono"
                 required
               />
             </div>
           </div>
                   <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
                     <button type="button" onClick={() => setIsRabModalOpen(false)} className="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200">Batal</button>
-                    <button type="submit" disabled={loading} className="rounded-lg bg-[#714B67] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52] disabled:opacity-50">{loading ? 'Menyimpan...' : 'Tambah ke RAB'}</button>
+                    <button type="submit" disabled={loading} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50">{loading ? 'Menyimpan...' : 'Tambah ke RAB'}</button>
                   </div>
                   </form>
                 </div>
@@ -926,17 +950,17 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             )}
 
             {/* Tabel Rincian RAB Berkelompok Berdasarkan Sub-Kategori */}
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
-          <div className="print:hidden mb-6 border-b border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-            <h2 className="text-lg font-semibold text-slate-200">Rincian Anggaran Biaya (RAB - Rencana)</h2>
+            <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm mb-8 print:border-none print:p-0 print:shadow-none print:mb-4">
+          <div className="print:hidden mb-6 border-b border-slate-200 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <h2 className="text-lg font-semibold text-slate-900">Rincian Anggaran Biaya (RAB - Rencana)</h2>
           </div>
 
           {rabItems.length === 0 ? (
-            <div className="text-center py-12 px-6 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 text-base font-mono">
+            <div className="text-center py-12 px-6 border border-dashed border-slate-300 rounded-xl bg-slate-50">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-white border border-slate-200 flex items-center justify-center text-emerald-700 text-base font-mono">
                 <ClipboardList className="w-5 h-5" />
               </div>
-              <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Item RAB</h3>
+              <h3 className="text-slate-800 font-semibold text-sm mb-1">Belum Ada Item RAB</h3>
               <p className="text-slate-500 text-xs max-w-xs mx-auto mb-4">
                 Tambahkan rincian rencana pekerjaan, volume, dan harga satuan melalui form di atas atau impor massal melalui file CSV.
               </p>
@@ -947,13 +971,13 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                 const categorySubtotal = items.reduce((sum, i) => sum + (i.total_cost || 0), 0)
 
                 return (
-                  <div key={catName} className="border border-slate-800/80 rounded-xl overflow-hidden print:border-slate-400 mb-4">
-                    <div className="bg-slate-800/80 print:bg-slate-200 px-4 py-2.5 flex justify-between items-center border-b border-slate-700/60 print:border-slate-400">
-                      <h3 className="text-xs font-bold text-emerald-400 print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <div key={catName} className="border border-slate-200 rounded-xl overflow-hidden print:border-slate-400 mb-4">
+                    <div className="bg-slate-50 print:bg-slate-200 px-4 py-2.5 flex justify-between items-center border-b border-slate-200 print:border-slate-400">
+                      <h3 className="text-xs font-bold text-emerald-700 print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 print:bg-slate-800 inline-block"></span>
                         {catName}
                       </h3>
-                      <span className="text-xs font-mono font-bold text-slate-300 print:text-slate-900">
+                      <span className="text-xs font-mono font-bold text-slate-700 print:text-slate-900">
                         Subtotal: Rp {categorySubtotal.toLocaleString('id-ID')}
                       </span>
                     </div>
@@ -961,7 +985,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider print:border-slate-400 print:text-slate-900 bg-slate-950/40 print:bg-transparent">
+                          <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider print:border-slate-400 print:text-slate-900 bg-slate-50 print:bg-transparent">
                             <th className="py-2.5 px-4">Item Pekerjaan</th>
                             <th className="py-2.5 px-4 text-right">Volume</th>
                             <th className="py-2.5 px-4 text-right">Harga Satuan</th>
@@ -969,12 +993,12 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                             <th className="no-print py-2.5 px-4 text-center">Aksi</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60 print:divide-slate-300">
+                        <tbody className="divide-y divide-slate-100 print:divide-slate-300">
                           {items.map((item) => {
                             const isEditing = editingRabId === item.id
 
                             return (
-                              <tr key={item.id} className="hover:bg-slate-800/40 transition">
+                              <tr key={item.id} className="hover:bg-slate-50 transition">
                                 {isEditing ? (
                                   <>
                                     <td className="py-3 px-4">
@@ -982,7 +1006,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                         type="text"
                                         value={editRabName}
                                         onChange={(e) => setEditRabName(e.target.value)}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 mb-1"
+                                        className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900 mb-1"
                                       />
                                       <div className="flex gap-2">
                                         <input
@@ -990,14 +1014,16 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                           value={editRabCategory}
                                           onChange={(e) => setEditRabCategory(e.target.value)}
                                           placeholder="Kategori"
-                                          className="w-36 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-300"
+                                          list="rab-category-presets"
+                                          className="w-36 bg-white border border-slate-200 rounded px-2 py-1 text-[10px] text-slate-900"
                                         />
                                         <input
                                           type="text"
                                           value={editRabUnit}
                                           onChange={(e) => setEditRabUnit(e.target.value)}
                                           placeholder="Satuan"
-                                          className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-400"
+                                          list="unit-presets"
+                                          className="w-20 bg-white border border-slate-200 rounded px-2 py-1 text-[10px] text-slate-900"
                                         />
                                       </div>
                                     </td>
@@ -1007,7 +1033,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                         step="any"
                                         value={editRabQty}
                                         onChange={(e) => setEditRabQty(e.target.value)}
-                                        className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                                        className="w-20 bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900 text-right font-mono"
                                       />
                                     </td>
                                     <td className="py-3 px-4 text-right">
@@ -1015,10 +1041,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                         type="number"
                                         value={editRabPrice}
                                         onChange={(e) => setEditRabPrice(e.target.value)}
-                                        className="w-28 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                                        className="w-28 bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900 text-right font-mono"
                                       />
                                     </td>
-                                    <td className="py-3 px-4 text-emerald-400 font-mono text-right text-xs">
+                                    <td className="py-3 px-4 text-emerald-700 font-mono text-right text-xs">
                                       Otomatis
                                     </td>
                                     <td className="no-print py-3 px-4 text-center space-x-1">
@@ -1030,7 +1056,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                       </button>
                                       <button
                                         onClick={() => setEditingRabId(null)}
-                                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
+                                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
                                       >
                                         Batal
                                       </button>
@@ -1038,14 +1064,14 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                   </>
                                 ) : (
                                   <>
-                                    <td className="py-3 px-4 font-medium text-slate-100 print:text-slate-900">
+                                    <td className="py-3 px-4 font-medium text-slate-900 print:text-slate-900">
                                       {item.name} <span className="text-xs text-slate-500 block font-normal print:text-slate-600">({item.unit || 'unit'})</span>
                                     </td>
-                                    <td className="py-3 px-4 text-slate-300 font-mono text-right print:text-slate-800">{item.quantity}</td>
-                                    <td className="py-3 px-4 text-slate-300 font-mono text-sm text-right print:text-slate-800">
+                                    <td className="py-3 px-4 text-slate-700 font-mono text-right print:text-slate-800">{item.quantity}</td>
+                                    <td className="py-3 px-4 text-slate-700 font-mono text-sm text-right print:text-slate-800">
                                       Rp {Number(item.unit_price).toLocaleString('id-ID')}
                                     </td>
-                                    <td className="py-3 px-4 text-emerald-400 font-mono font-semibold text-sm text-right print:text-slate-900">
+                                    <td className="py-3 px-4 text-emerald-700 font-mono font-semibold text-sm text-right print:text-slate-900">
                                       Rp {Number(item.total_cost).toLocaleString('id-ID')}
                                     </td>
                                     <td className="no-print py-3 px-4 text-center space-x-2">
@@ -1058,13 +1084,13 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                           setEditRabQty(item.quantity.toString())
                                           setEditRabPrice(item.unit_price.toString())
                                         }}
-                                        className="text-sky-400 hover:text-sky-300 text-xs bg-sky-950/30 hover:bg-sky-950/60 border border-sky-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                                        className="text-emerald-700 hover:text-emerald-800 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-md transition cursor-pointer"
                                       >
                                         Edit
                                       </button>
                                       <button
                                         onClick={() => handleDeleteRab(item.id)}
-                                        className="text-red-400 hover:text-red-300 text-xs bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
+                                        className="text-rose-700 hover:text-rose-800 text-xs bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-md transition cursor-pointer"
                                       >
                                         Hapus
                                       </button>
@@ -1112,59 +1138,71 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                     <button type="button" onClick={() => setIsExpenseModalOpen(false)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Tutup dialog"><X className="h-5 w-5" /></button>
                   </div>
                   <form onSubmit={handleAddExpense} className="space-y-4">
-            <h2 className="text-lg font-semibold mb-4 text-sky-400 flex items-center gap-2">
+            <h2 className="text-lg font-semibold mb-4 text-emerald-700 flex items-center gap-2">
               <span>+</span> Catat Pengeluaran Lapangan (Aktual)
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Tanggal</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Tanggal</label>
                 <input
                   type="date"
                   value={expDate}
                   onChange={(e) => setExpDate(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500 transition font-mono"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 transition font-mono"
                   required
                 />
                 </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Keterangan / Nama Belanja</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Keterangan / Nama Belanja</label>
                 <input
                   type="text"
                   value={expName}
                   onChange={(e) => setExpName(e.target.value)}
                   placeholder="Contoh: Bayar tukang minggu ke-1 / Beli semen"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Kategori</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Kategori</label>
                 <input
                   type="text"
                   value={expCategory}
                   onChange={(e) => setExpCategory(e.target.value)}
                   placeholder="Contoh: Upah / Material"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition"
+                  list="rab-category-presets"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Satuan Aktual (opsional)</label>
+                <input
+                  type="text"
+                  value={expUnit}
+                  onChange={(e) => setExpUnit(e.target.value)}
+                  list="unit-presets"
+                  placeholder="Pilih atau ketik satuan"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Jumlah Biaya Aktual (Rp)</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Jumlah Biaya Aktual (Rp)</label>
                 <input
                   type="number"
                   value={expAmount}
                   onChange={(e) => setExpAmount(e.target.value)}
                   placeholder="350000"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition font-mono"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition font-mono"
                   required
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Nota / Bukti Kuitansi</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1 uppercase tracking-wider">Nota / Bukti Kuitansi</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-300 file:mr-3 file:border-0 file:bg-emerald-950 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-emerald-400 hover:file:bg-emerald-900 focus:outline-none focus:border-emerald-500 transition"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-700 file:mr-3 file:border-0 file:bg-emerald-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100 focus:outline-none focus:border-emerald-500 transition"
                 />
                 {receiptFile && (
                   <p className="mt-1 text-xs text-slate-500 truncate">Dipilih: {receiptFile.name}</p>
@@ -1173,7 +1211,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             </div>
                     <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
                       <button type="button" onClick={() => setIsExpenseModalOpen(false)} className="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200">Batal</button>
-                      <button type="submit" disabled={loadingExpense || uploading} className="rounded-lg bg-[#714B67] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52] disabled:opacity-50">
+                      <button type="submit" disabled={loadingExpense || uploading} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50">
                         {uploading ? 'Mengunggah Nota...' : loadingExpense ? 'Menyimpan...' : 'Simpan Pengeluaran'}
                       </button>
                     </div>
@@ -1183,17 +1221,17 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             )}
 
           {/* Tabel Realisasi Biaya Aktual */}
-          <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-6 rounded-2xl shadow-xl print:border-none print:p-0 print:shadow-none print:mt-6">
-            <div className="mb-6 border-b border-slate-800 pb-4 print:border-slate-900">
-              <h2 className="text-lg font-semibold text-slate-200 print:text-slate-900">Realisasi Pengeluaran (Aktual Lapangan)</h2>
+          <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm print:border-none print:p-0 print:shadow-none print:mt-6">
+          <div className="mb-6 border-b border-slate-200 pb-4 print:border-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900 print:text-slate-900">Realisasi Pengeluaran (Aktual Lapangan)</h2>
             </div>
 
             {actualExpenses.length === 0 ? (
-              <div className="text-center py-12 px-6 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
-                <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400 text-base font-mono">
+              <div className="text-center py-12 px-6 border border-dashed border-slate-300 rounded-xl bg-slate-50">
+                <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-white border border-slate-200 flex items-center justify-center text-emerald-700 text-base font-mono">
                   <Receipt className="w-5 h-5" />
                 </div>
-                <h3 className="text-slate-200 font-semibold text-sm mb-1">Belum Ada Catatan Pengeluaran</h3>
+                <h3 className="text-slate-800 font-semibold text-sm mb-1">Belum Ada Catatan Pengeluaran</h3>
                 <p className="text-slate-500 text-xs max-w-xs mx-auto">
                   Catat setiap transaksi belanja atau upah harian di lapangan untuk memantau selisih anggaran secara real-time.
                 </p>
@@ -1202,21 +1240,22 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider print:border-slate-900 print:text-slate-900">
+                    <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider print:border-slate-900 print:text-slate-900">
                       <th className="py-3 px-4">Tanggal</th>
                       <th className="py-3 px-4">Keterangan</th>
                       <th className="py-3 px-4">Kategori</th>
+                      <th className="py-3 px-4">Satuan</th>
                       <th className="py-3 px-4 text-right">Biaya Aktual</th>
                       <th className="no-print py-3 px-4 text-center">Nota</th>
                       <th className="no-print py-3 px-4 text-center">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 print:divide-slate-300">
+                  <tbody className="divide-y divide-slate-100 print:divide-slate-300">
                     {actualExpenses.map((exp) => {
                       const isEditing = editingExpId === exp.id
 
                       return (
-                        <tr key={exp.id} className="hover:bg-slate-800/40 transition">
+                        <tr key={exp.id} className="hover:bg-slate-50 transition">
                           {isEditing ? (
                             <>
                               <td className="py-3 px-4">
@@ -1224,7 +1263,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                   type="date"
                                   value={editExpDate}
                                   onChange={(e) => setEditExpDate(e.target.value)}
-                                  className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 font-mono"
+                                  className="bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900 font-mono"
                                 />
                               </td>
                               <td className="py-3 px-4">
@@ -1232,7 +1271,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                   type="text"
                                   value={editExpName}
                                   onChange={(e) => setEditExpName(e.target.value)}
-                                  className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
+                                  className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900"
                                 />
                               </td>
                               <td className="py-3 px-4">
@@ -1240,7 +1279,18 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                   type="text"
                                   value={editExpCategory}
                                   onChange={(e) => setEditExpCategory(e.target.value)}
-                                  className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100"
+                                  list="rab-category-presets"
+                                  className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="text"
+                                  value={editExpUnit}
+                                  onChange={(e) => setEditExpUnit(e.target.value)}
+                                  list="unit-presets"
+                                  placeholder="Satuan"
+                                  className="w-20 bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900"
                                 />
                               </td>
                               <td className="py-3 px-4 text-right">
@@ -1248,20 +1298,20 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                   type="number"
                                   value={editExpAmount}
                                   onChange={(e) => setEditExpAmount(e.target.value)}
-                                  className="w-32 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 text-right font-mono"
+                                  className="w-32 bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900 text-right font-mono"
                                 />
                               </td>
                               <td className="no-print py-3 px-4 text-center">-</td>
                               <td className="no-print py-3 px-4 text-center space-x-1">
                                 <button
                                   onClick={() => handleUpdateExpense(exp.id)}
-                                  className="bg-sky-600 hover:bg-sky-500 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer"
                                 >
                                   Simpan
                                 </button>
                                 <button
                                   onClick={() => setEditingExpId(null)}
-                                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
+                                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] px-2.5 py-1 rounded transition cursor-pointer"
                                 >
                                   Batal
                                 </button>
@@ -1269,10 +1319,18 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                             </>
                           ) : (
                             <>
-                              <td className="py-4 px-4 text-slate-300 text-sm font-mono print:text-slate-800">{exp.date}</td>
-                              <td className="py-4 px-4 font-medium text-slate-100 print:text-slate-900">{exp.name}</td>
-                              <td className="py-4 px-4 text-slate-300 text-sm print:text-slate-800">{exp.category || '-'}</td>
-                              <td className="py-4 px-4 text-sky-400 font-mono font-semibold text-sm text-right print:text-slate-900">
+                              <td className="py-4 px-4 text-slate-600 text-sm font-mono print:text-slate-800">{exp.date}</td>
+                              <td className="py-4 px-4 font-medium text-slate-900 print:text-slate-900">{exp.name}</td>
+                              <td className="py-4 px-4 text-slate-700 text-sm print:text-slate-800">{exp.category || '-'}</td>
+                              <td className="py-4 px-4 text-slate-700 text-sm print:text-slate-800">
+                                <span>{exp.unit || '-'}</span>
+                                {hasUnitMismatch(exp, rabItems) && (
+                                  <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800" title={`Satuan aktual ${exp.unit} berbeda dari satuan RAB pada kategori ini`}>
+                                    <AlertTriangle className="h-3 w-3" /> Mismatch Satuan
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-4 px-4 text-emerald-700 font-mono font-semibold text-sm text-right print:text-slate-900">
                                 Rp {Number(exp.amount).toLocaleString('id-ID')}
                               </td>
                               <td className="no-print py-4 px-4 text-center">
@@ -1281,12 +1339,12 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                     href={exp.receipt_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-emerald-400 hover:text-emerald-300 text-xs font-semibold whitespace-nowrap"
+                                    className="text-emerald-700 hover:text-emerald-800 text-xs font-semibold whitespace-nowrap"
                                   >
                                     <Eye className="inline-block w-3.5 h-3.5 mr-1" /> Lihat Nota
                                   </a>
                                 ) : (
-                                  <span className="text-slate-600 text-xs">-</span>
+                                  <span                                   className="text-slate-400 text-xs">-</span>
                                 )}
                               </td>
                               <td className="no-print py-4 px-4 text-center space-x-2">
@@ -1296,6 +1354,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                     setEditExpDate(exp.date)
                                     setEditExpName(exp.name)
                                     setEditExpCategory(exp.category || '')
+                                    setEditExpUnit(exp.unit || '')
                                     setEditExpAmount(exp.amount.toString())
                                   }}
                                   className="text-sky-400 hover:text-sky-300 text-xs bg-sky-950/30 hover:bg-sky-950/60 border border-sky-900/40 px-3 py-1.5 rounded-md transition cursor-pointer"
