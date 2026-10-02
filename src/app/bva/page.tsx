@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { exportToExcel } from '../../lib/exportUtils'
 import { hasUnitMismatch } from '../../lib/unitMismatch'
+import { type AuditLog } from '../../lib/auditLogger'
 import { fetchAllRows } from '../../lib/supabasePagination'
 import BvaChart from '../../components/BvaChart'
 import Link from 'next/link'
@@ -232,6 +233,52 @@ export default function BvaAnalysisPage() {
     }
   }
 
+  async function handleExportAuditLogsCSV(project: Pick<ProjectBvaSummary, 'id' | 'name'>) {
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .eq('project_id', project.id)
+        .order('created_at', { ascending: false })
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      const auditLogs = (data || []) as AuditLog[]
+      const getAuditCost = (values: Record<string, unknown> | null) => {
+        const value = values?.amount ?? values?.total_cost
+        if (typeof value !== 'number' && typeof value !== 'string') return '-'
+        const numericValue = Number(value)
+        return Number.isFinite(numericValue) ? formatCurrency(numericValue) : '-'
+      }
+      const csvRows = [
+        ['Waktu Aktivitas', 'Jenis Aksi', 'Entitas', 'Deskripsi', 'Biaya Lama', 'Biaya Baru'],
+        ...auditLogs.map((log) => [
+          new Date(log.created_at).toLocaleString('id-ID'),
+          log.action_type,
+          log.entity_type === 'rab_items' ? 'RAB' : 'Pengeluaran BVA',
+          log.description,
+          getAuditCost(log.old_values),
+          getAuditCost(log.new_values),
+        ]),
+      ]
+      const escapeCsvCell = (value: string) => `"${value.replace(/"/g, '""')}"`
+      const csv = `\uFEFF${csvRows.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')}`
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const safeProjectName = project.name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_').trim()
+      const now = new Date()
+      const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      link.href = url
+      link.download = `WiraDana_Audit_Log_${safeProjectName || 'Proyek'}_${date}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      alert(`Gagal mengekspor audit log proyek ${project.name}: ${error instanceof Error ? error.message : 'Terjadi kesalahan.'}`)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 p-12 flex items-center justify-center font-mono text-sm">
@@ -385,12 +432,21 @@ export default function BvaAnalysisPage() {
                           {isOver ? '-' : '+'} Rp {Math.abs(item.variance).toLocaleString('id-ID')}
                         </td>
                         <td className="no-print py-4 px-4 text-center">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
                           <Link
                             href={`/projects/${item.id}`}
                             className="text-emerald-700 hover:text-emerald-800 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-md transition"
                           >
                             Detail &rarr;
                           </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleExportAuditLogsCSV(item)}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                          >
+                            <Download className="h-3.5 w-3.5" /> Audit CSV
+                          </button>
+                          </div>
                         </td>
                       </tr>
                     )

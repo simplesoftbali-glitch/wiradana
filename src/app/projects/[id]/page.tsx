@@ -4,19 +4,25 @@ import { useState, useEffect, use, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { exportToExcel } from '../../../lib/exportUtils'
 import { hasUnitMismatch } from '../../../lib/unitMismatch'
+import { type AuditLog, logActivity } from '../../../lib/auditLogger'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
+  Clock,
   ClipboardList,
   Download,
+  Edit3,
   Eye,
   FileSpreadsheet,
   FileText,
+  History,
   Pencil,
   Plus,
+  PlusCircle,
   Printer,
   Receipt,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react'
@@ -83,8 +89,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   const [project, setProject] = useState<Project | null>(null)
   const [rabItems, setRabItems] = useState<RabItem[]>([])
   const [actualExpenses, setActualExpenses] = useState<ActualExpense[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  const [auditError, setAuditError] = useState('')
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
-  const [activeTab, setActiveTab] = useState<'rab' | 'actual' | 'overview'>('rab')
+  const [activeTab, setActiveTab] = useState<'rab' | 'actual' | 'audit'>('rab')
   const [loading, setLoading] = useState(false)
   const [loadingExpense, setLoadingExpense] = useState(false)
 
@@ -219,6 +227,19 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       .order('date', { ascending: false })
     setActualExpenses(expData || [])
 
+    const { data: auditData, error: auditLoadError } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+    if (auditLoadError) {
+      setAuditLogs([])
+      setAuditError(`Gagal memuat histori audit: ${auditLoadError.message}`)
+    } else {
+      setAuditLogs(auditData || [])
+      setAuditError('')
+    }
+
     const { data: compData } = await supabase
       .from('company_profiles')
       .select('*')
@@ -267,6 +288,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
     const qty = parseFloat(editRabQty)
     const price = parseFloat(editRabPrice)
+    const previousItem = rabItems.find((item) => item.id === itemId)
 
     const { error } = await supabase
       .from('rab_items')
@@ -282,6 +304,25 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     if (error) {
       alert('Gagal memperbarui item RAB: ' + error.message)
     } else {
+      try {
+        await logActivity({
+          projectId,
+          entityType: 'rab_items',
+          actionType: 'UPDATE',
+          description: `Memperbarui item RAB: ${editRabName}`,
+          oldValues: previousItem ? { ...previousItem } : null,
+          newValues: {
+            name: editRabName,
+            category: editRabCategory || 'Pekerjaan Lain-lain',
+            unit: editRabUnit,
+            quantity: qty,
+            unit_price: price,
+            total_cost: qty * price,
+          },
+        })
+      } catch (auditLogError) {
+        alert(`Item RAB berhasil diperbarui, tetapi audit log gagal disimpan: ${auditLogError instanceof Error ? auditLogError.message : 'Terjadi kesalahan.'}`)
+      }
       setEditingRabId(null)
       fetchProjectData()
     }
@@ -293,6 +334,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     }
 
     const amount = parseFloat(editExpAmount)
+    const previousExpense = actualExpenses.find((expense) => expense.id === expId)
 
     const { error } = await supabase
       .from('actual_expenses')
@@ -308,6 +350,24 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     if (error) {
       alert('Gagal memperbarui pengeluaran: ' + error.message)
     } else {
+      try {
+        await logActivity({
+          projectId,
+          entityType: 'actual_expenses',
+          actionType: 'UPDATE',
+          description: `Memperbarui pengeluaran: ${editExpName}`,
+          oldValues: previousExpense ? { ...previousExpense } : null,
+          newValues: {
+            date: editExpDate,
+            name: editExpName,
+            category: editExpCategory,
+            unit: editExpUnit.trim() || null,
+            amount,
+          },
+        })
+      } catch (auditLogError) {
+        alert(`Pengeluaran berhasil diperbarui, tetapi audit log gagal disimpan: ${auditLogError instanceof Error ? auditLogError.message : 'Terjadi kesalahan.'}`)
+      }
       setEditingExpId(null)
       fetchProjectData()
     }
@@ -420,10 +480,33 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         throw new Error(`Gagal mengimpor RAB: ${error.message}`)
       }
 
+      const auditResults = await Promise.allSettled(items.map((item) => logActivity({
+        projectId,
+        entityType: 'rab_items',
+        actionType: 'CREATE',
+        description: `Mengimpor item RAB: ${item.name}`,
+        newValues: {
+          name: item.name,
+          category: item.category,
+          unit: item.unit,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_cost: item.quantity * item.unit_price,
+        },
+      })))
+      const auditFailures = auditResults.filter((result) => result.status === 'rejected')
       setIsImportModalOpen(false)
       setImportFile(null)
       await fetchProjectData()
-      alert(`${items.length} item RAB berhasil diimpor.`)
+      if (auditFailures.length > 0) {
+        const firstFailure = auditFailures[0]
+        const failureMessage = firstFailure.status === 'rejected' && firstFailure.reason instanceof Error
+          ? firstFailure.reason.message
+          : 'Terjadi kesalahan.'
+        alert(`${items.length} item RAB berhasil diimpor, tetapi ${auditFailures.length} audit log gagal disimpan. ${failureMessage}`)
+      } else {
+        alert(`${items.length} item RAB berhasil diimpor.`)
+      }
     } catch (error) {
       setImportError(error instanceof Error ? error.message : 'Gagal memproses berkas CSV.')
     } finally {
@@ -440,21 +523,31 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       : category
 
     setLoading(true)
-    const { error } = await supabase.from('rab_items').insert([
-      {
-        project_id: projectId,
-        name: name,
-        unit: unit,
-        quantity: parseFloat(quantity),
-        unit_price: parseFloat(unitPrice),
-        category: finalCategory
-      }
-    ])
+    const newItem = {
+      project_id: projectId,
+      name,
+      unit,
+      quantity: parseFloat(quantity),
+      unit_price: parseFloat(unitPrice),
+      category: finalCategory,
+    }
+    const { error } = await supabase.from('rab_items').insert([newItem])
     setLoading(false)
 
     if (error) {
       alert('Gagal menyimpan RAB: ' + error.message)
     } else {
+      try {
+        await logActivity({
+          projectId,
+          entityType: 'rab_items',
+          actionType: 'CREATE',
+          description: `Menambahkan item RAB: ${newItem.name}`,
+          newValues: { ...newItem, total_cost: newItem.quantity * newItem.unit_price },
+        })
+      } catch (auditLogError) {
+        alert(`Item RAB berhasil disimpan, tetapi audit log gagal disimpan: ${auditLogError instanceof Error ? auditLogError.message : 'Terjadi kesalahan.'}`)
+      }
       setName('')
       setUnit('')
       setQuantity('')
@@ -512,6 +605,25 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
         throw new Error('Gagal menyimpan pengeluaran: ' + error.message)
       }
 
+      try {
+        await logActivity({
+          projectId,
+          entityType: 'actual_expenses',
+          actionType: 'CREATE',
+          description: `Menambahkan pengeluaran: ${expName}`,
+          newValues: {
+            name: expName,
+            category: expCategory,
+            unit: expUnit.trim() || null,
+            amount: parseFloat(expAmount),
+            date: expDate,
+            receipt_url: receiptUrl,
+          },
+        })
+      } catch (auditLogError) {
+        alert(`Pengeluaran berhasil disimpan, tetapi audit log gagal disimpan: ${auditLogError instanceof Error ? auditLogError.message : 'Terjadi kesalahan.'}`)
+      }
+
       setExpName('')
       setExpCategory('')
       setExpUnit('')
@@ -529,13 +641,45 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
   async function handleDeleteRab(itemId: string) {
     if (!confirm('Yakin ingin menghapus item RAB ini?')) return
-    await supabase.from('rab_items').delete().eq('id', itemId)
+    const previousItem = rabItems.find((item) => item.id === itemId)
+    const { error } = await supabase.from('rab_items').delete().eq('id', itemId)
+    if (error) {
+      alert(`Gagal menghapus item RAB: ${error.message}`)
+      return
+    }
+    try {
+      await logActivity({
+        projectId,
+        entityType: 'rab_items',
+        actionType: 'DELETE',
+        description: `Menghapus item RAB: ${previousItem?.name || itemId}`,
+        oldValues: previousItem ? { ...previousItem } : null,
+      })
+    } catch (auditLogError) {
+      alert(`Item RAB berhasil dihapus, tetapi audit log gagal disimpan: ${auditLogError instanceof Error ? auditLogError.message : 'Terjadi kesalahan.'}`)
+    }
     fetchProjectData()
   }
 
   async function handleDeleteExpense(expId: string) {
     if (!confirm('Yakin ingin menghapus catatan pengeluaran ini?')) return
-    await supabase.from('actual_expenses').delete().eq('id', expId)
+    const previousExpense = actualExpenses.find((expense) => expense.id === expId)
+    const { error } = await supabase.from('actual_expenses').delete().eq('id', expId)
+    if (error) {
+      alert(`Gagal menghapus pengeluaran: ${error.message}`)
+      return
+    }
+    try {
+      await logActivity({
+        projectId,
+        entityType: 'actual_expenses',
+        actionType: 'DELETE',
+        description: `Menghapus pengeluaran: ${previousExpense?.name || expId}`,
+        oldValues: previousExpense ? { ...previousExpense } : null,
+      })
+    } catch (auditLogError) {
+      alert(`Pengeluaran berhasil dihapus, tetapi audit log gagal disimpan: ${auditLogError instanceof Error ? auditLogError.message : 'Terjadi kesalahan.'}`)
+    }
     fetchProjectData()
   }
 
@@ -549,6 +693,43 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
 
   function formatCurrency(value: number) {
     return `Rp ${Number(value || 0).toLocaleString('id-ID')}`
+  }
+
+  function getAuditCost(values: Record<string, unknown> | null) {
+    const value = values?.amount ?? values?.total_cost
+    if (typeof value !== 'number' && typeof value !== 'string') return null
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? formatCurrency(numericValue) : null
+  }
+
+  function handleExportAuditLogsCSV() {
+    try {
+      const csvRows = [
+        ['Waktu Aktivitas', 'Jenis Aksi', 'Entitas', 'Deskripsi', 'Biaya Lama', 'Biaya Baru'],
+        ...auditLogs.map((log) => [
+          new Date(log.created_at).toLocaleString('id-ID'),
+          log.action_type,
+          log.entity_type === 'rab_items' ? 'RAB' : 'Pengeluaran BVA',
+          log.description,
+          getAuditCost(log.old_values) || '-',
+          getAuditCost(log.new_values) || '-',
+        ]),
+      ]
+      const escapeCsvCell = (value: string) => `"${value.replace(/"/g, '""')}"`
+      const csv = `\uFEFF${csvRows.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')}`
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const safeProjectName = (project?.name || 'Proyek').replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_').trim()
+      const now = new Date()
+      const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      link.href = url
+      link.download = `WiraDana_Audit_Log_${safeProjectName || 'Proyek'}_${date}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      alert(`Gagal mengekspor audit log: ${error instanceof Error ? error.message : 'Terjadi kesalahan.'}`)
+    }
   }
 
   function handleExportExcel() {
@@ -836,6 +1017,17 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
               }`}
             >
               <Receipt className="w-4 h-4 mr-2 text-slate-500" /> Pengeluaran Lapangan (Aktual)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('audit')}
+              className={`flex items-center rounded-lg px-4 py-3 text-left text-sm font-semibold transition cursor-pointer ${
+                activeTab === 'audit'
+                  ? 'border-b-2 border-emerald-600 text-emerald-700 font-bold'
+                  : 'border-b-2 border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <History className="w-4 h-4 mr-2" /> Histori &amp; Audit Log
             </button>
           </div>
         </div>
@@ -1379,6 +1571,89 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             )}
           </div>
         </div>
+        )}
+
+        {activeTab === 'audit' && (
+          <section className="rounded-xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm sm:p-6">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                  <History className="h-5 w-5 text-emerald-600" /> Histori &amp; Audit Log
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">Riwayat perubahan item RAB dan transaksi pengeluaran proyek.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleExportAuditLogsCSV}
+                className="no-print inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+              >
+                <Download className="h-4 w-4" /> Ekspor Audit CSV
+              </button>
+            </div>
+
+            {auditError && (
+              <p role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {auditError}
+              </p>
+            )}
+
+            {auditLogs.length === 0 && !auditError ? (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+                <Clock className="mx-auto mb-2 h-6 w-6 text-slate-400" />
+                <p className="text-sm font-medium text-slate-700">Belum ada histori transaksi.</p>
+                <p className="mt-1 text-xs text-slate-500">Aktivitas RAB dan pengeluaran selanjutnya akan tercatat di sini.</p>
+              </div>
+            ) : auditLogs.length > 0 ? (
+              <ol className="space-y-3">
+                {auditLogs.map((log) => {
+                  const ActionIcon = log.action_type === 'CREATE'
+                    ? PlusCircle
+                    : log.action_type === 'UPDATE'
+                      ? Edit3
+                      : Trash2
+                  const actionColor = log.action_type === 'CREATE'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : log.action_type === 'UPDATE'
+                      ? 'border-sky-200 bg-sky-50 text-sky-700'
+                      : 'border-rose-200 bg-rose-50 text-rose-700'
+                  const oldCost = getAuditCost(log.old_values)
+                  const newCost = getAuditCost(log.new_values)
+
+                  return (
+                    <li key={log.id} className="rounded-lg border border-slate-200 bg-white">
+                      <details className="group">
+                        <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                          <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${actionColor}`}>
+                            <ActionIcon className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-semibold text-slate-800">{log.description}</span>
+                            <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                              <span className="inline-flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5" />
+                                {new Date(log.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                              </span>
+                              <span aria-hidden="true">·</span>
+                              <span>{log.entity_type === 'rab_items' ? 'RAB' : 'Pengeluaran BVA'}</span>
+                            </span>
+                          </span>
+                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${actionColor}`}>
+                            {log.action_type}
+                          </span>
+                        </summary>
+                        <div className="border-t border-slate-100 px-4 py-3 text-sm">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Perubahan biaya</p>
+                          <p className="mt-1 font-mono text-slate-700">
+                            {oldCost || '—'} <span className="px-1 text-slate-400">→</span> {newCost || '—'}
+                          </p>
+                        </div>
+                      </details>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : null}
+          </section>
         )}
 
         {/* CATATAN KAKI (Cetak) */}
