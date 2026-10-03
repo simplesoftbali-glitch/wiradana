@@ -33,6 +33,12 @@ interface PaymentDetails {
   accountHolder: string
 }
 
+type InvoiceTemplate = 'modern' | 'minimalist' | 'classic'
+
+function isInvoiceTemplate(value: string): value is InvoiceTemplate {
+  return value === 'modern' || value === 'minimalist' || value === 'classic'
+}
+
 interface Invoice {
   id: string
   project_id: string
@@ -151,6 +157,7 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
   const [lines, setLines] = useState<InvoiceLine[]>([])
   const [company, setCompany] = useState<CompanyDetails | null>(null)
   const [payment, setPayment] = useState<PaymentDetails | null>(null)
+  const [invoiceTemplate, setInvoiceTemplate] = useState<InvoiceTemplate>('modern')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -249,16 +256,34 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
         <Link href={`/projects/${invoice.project_id}/invoices`} className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900">
           <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Invoice
         </Link>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#714B67] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52]"
-        >
-          <Printer className="h-4 w-4" /> Cetak Invoice
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+            <span className="font-medium text-slate-600">Layout</span>
+            <select
+              value={invoiceTemplate}
+              onChange={(event) => {
+                const value = event.target.value
+                if (isInvoiceTemplate(value)) setInvoiceTemplate(value)
+              }}
+              aria-label="Pilih layout invoice"
+              className="border-0 bg-transparent py-0 pl-1 pr-7 text-sm font-semibold text-slate-900 shadow-none focus:ring-0"
+            >
+              <option value="modern">Modern</option>
+              <option value="minimalist">Minimalist</option>
+              <option value="classic">Classic</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#714B67] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#5a3b52]"
+          >
+            <Printer className="h-4 w-4" /> Cetak Invoice
+          </button>
+        </div>
       </div>
 
-      <article className="invoice-sheet bg-white p-8 text-slate-900 shadow-sm print:p-0 print:shadow-none">
+      <article className={`invoice-sheet invoice-template-${invoiceTemplate} bg-white p-8 text-slate-900 shadow-sm print:p-0 print:shadow-none`}>
         {notice && <p className="print:hidden mb-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">{notice}</p>}
         <div className="invoice-header grid grid-cols-1 gap-6 border-b-2 border-slate-900 pb-5 md:grid-cols-[1.2fr_0.8fr]">
           <div className="flex items-start gap-4">
@@ -281,7 +306,10 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
           <div className="md:text-right">
-            <h1 className="text-4xl font-black tracking-wide text-slate-900">Invoice</h1>
+            <h1 className="invoice-title text-4xl font-black tracking-wide text-slate-900">Invoice</h1>
+            <span className="invoice-status-badge mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">
+              Diterbitkan
+            </span>
             <div className="mt-3 text-left text-sm md:ml-auto md:max-w-xs">
               <p className="font-bold">Kepada:</p>
               <p className="mt-1 font-semibold">{invoice.recipient_name}</p>
@@ -298,8 +326,8 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
           <div><span className="font-semibold text-slate-600">Mata Uang:</span><p className="mt-1 font-semibold">Indonesian Rupiah ({invoice.currency || 'IDR'})</p></div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
+        <div className="invoice-items-wrap overflow-x-auto">
+          <table className="invoice-items-table w-full border-collapse text-xs">
             <thead>
               <tr className="border-y-2 border-slate-900 bg-slate-100 text-left text-slate-900">
                 <th className="px-2 py-1">Kode</th>
@@ -355,19 +383,6 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
                 <p>Atas Nama: <span className="font-semibold text-slate-900">{payment.accountHolder || '-'}</span></p>
               </div>
             </div>
-            <div className="print-keep-together pt-2">
-              <p className="font-bold">Disiapkan Oleh</p>
-              <div className="mt-2">
-                <QRCodeSVG
-                  value={verificationValue}
-                  size={64}
-                  level="M"
-                  marginSize={1}
-                  aria-label="QR code verifikasi invoice"
-                />
-              </div>
-              <p className="mt-1 font-semibold">{invoice.prepared_by || '-'}</p>
-            </div>
           </div>
 
           <div className="print-keep-together space-y-2 text-sm">
@@ -385,6 +400,18 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="invoice-total mt-2 flex justify-between gap-4 rounded-md bg-[#714B67] px-3 py-3 text-base font-extrabold text-white print:border print:border-slate-900 print:bg-white print:text-slate-900">
               <span>Total</span><span className="font-mono">Rp {formatRupiah(total)}</span>
+            </div>
+            <div className="invoice-signature-box print-keep-together mt-5 flex flex-col items-end border border-slate-300 p-3 text-right text-xs">
+              <p className="w-full font-bold">Tanda Tangan Digital</p>
+              <QRCodeSVG
+                value={verificationValue}
+                size={64}
+                level="M"
+                marginSize={1}
+                aria-label="QR code verifikasi invoice"
+                className="mt-2 shrink-0"
+              />
+              <p className="mt-1 w-full font-semibold">{invoice.prepared_by || '-'}</p>
             </div>
           </div>
         </div>

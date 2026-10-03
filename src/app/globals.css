@@ -225,3 +225,155 @@
     print-color-adjust: exact;
   }
 }
+
+.invoice-template-modern .invoice-header {
+  border-bottom: 4px solid #10b981;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 1.5rem;
+}
+
+.invoice-template-modern .invoice-header h1,
+.invoice-template-modern .invoice-header h2,
+.invoice-template-modern .invoice-header p,
+.invoice-template-modern .invoice-header .text-slate-700,
+.invoice-template-modern .invoice-header .text-slate-900 {
+  color: #ffffff;
+}
+
+.invoice-template-modern .invoice-header .text-slate-700 {
+  color: #cbd5e1;
+}
+
+.invoice-template-modern .invoice-status-badge {
+  border-color: #34d399;
+  background: #065f46;
+  color: #ecfdf5;
+}
+
+.invoice-template-minimalist .invoice-header {
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.invoice-template-minimalist .invoice-meta-grid {
+  border-color: #e2e8f0;
+}
+
+.invoice-template-minimalist .invoice-status-badge {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+}
+
+.invoice-template-minimalist .invoice-items-table th,
+.invoice-template-minimalist .invoice-items-table td {
+  border-color: #e2e8f0;
+}
+
+.invoice-template-minimalist .invoice-total {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.invoice-template-minimalist .invoice-items-table td:nth-child(1),
+.invoice-template-minimalist .invoice-items-table td:nth-child(n + 3),
+.invoice-template-minimalist .invoice-meta-grid p,
+.invoice-template-minimalist .invoice-total span:last-child {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-template-classic {
+  border: 4px double #334155;
+  padding: 1.75rem;
+}
+
+.invoice-template-classic .invoice-header {
+  border-bottom: 3px double #334155;
+  padding-bottom: 1.25rem;
+}
+
+.invoice-template-classic .invoice-signature-box {
+  border: 3px double #64748b;
+  min-width: 10rem;
+}
+
+.invoice-template-modern .invoice-header,
+.invoice-template-modern .invoice-header *,
+.invoice-status-badge {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@media print {
+  body.invoice-print-mode .invoice-sheet {
+    box-sizing: border-box;
+    break-inside: auto;
+  }
+
+  body.invoice-print-mode .invoice-items-wrap {
+    overflow: visible !important;
+  }
+
+  body.invoice-print-mode .invoice-template-modern .invoice-header {
+    border-bottom: 4px solid #10b981 !important;
+    background: #0f172a !important;
+  }
+
+  body.invoice-print-mode .invoice-template-modern .invoice-header div,
+  body.invoice-print-mode .invoice-template-modern .invoice-header h1,
+  body.invoice-print-mode .invoice-template-modern .invoice-header h2,
+  body.invoice-print-mode .invoice-template-modern .invoice-header p {
+    color: #ffffff !important;
+  }
+
+  body.invoice-print-mode .invoice-template-modern .invoice-header .text-slate-700 {
+    color: #cbd5e1 !important;
+  }
+
+  body.invoice-print-mode .invoice-template-modern .invoice-status-badge {
+    border-color: #34d399 !important;
+    background: #065f46 !important;
+    color: #ecfdf5 !important;
+  }
+
+  body.invoice-print-mode .invoice-template-minimalist .invoice-header {
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+
+  body.invoice-print-mode .invoice-template-minimalist .invoice-status-badge {
+    border-color: #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+  }
+
+  body.invoice-print-mode .invoice-template-minimalist .invoice-items-table th,
+  body.invoice-print-mode .invoice-template-minimalist .invoice-items-table td {
+    border-color: #e2e8f0 !important;
+  }
+
+  body.invoice-print-mode .invoice-template-minimalist .invoice-total {
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  body.invoice-print-mode .invoice-template-classic {
+    border: 4px double #334155 !important;
+    padding: 1.75rem !important;
+  }
+
+  body.invoice-print-mode .invoice-template-classic .invoice-header {
+    border-bottom: 3px double #334155 !important;
+  }
+
+  body.invoice-print-mode .invoice-template-classic .invoice-signature-box {
+    border: 3px double #64748b !important;
+  }
+
+  body.invoice-print-mode .invoice-signature-box {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
