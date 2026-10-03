@@ -12,38 +12,74 @@ interface BroadcastItem {
   title: string
   message: string
   type: string
-  created_at: string
+  date: string
 }
+
+const releaseAnnouncements: BroadcastItem[] = [
+  {
+    id: 'announcement-v120',
+    type: 'FEATURE',
+    title: '🚀 WiraDana v1.2.0 Resmi Dirilis: Audit Trail, Multi-Satuan RAB, & Template Invoice A4',
+    date: '03 Okt 2026',
+    message: 'WiraDana v1.2.0 kini dilengkapi dengan Audit Trail (catatan histori transaksi BVA + ekspor CSV), dukungan Multi-Satuan RAB dinamis (m², m³, ls, oh) beserta peringatan mismatch satuan, serta 3 pilihan varian Template Invoice A4 (Modern, Minimalist, Formal Classic) dengan QR Code Signature.',
+  },
+  {
+    id: 'announcement-v110',
+    type: 'UPDATE',
+    title: '📦 WiraDana v1.1.0: Modul Backup/Restore JSON & Ekspor Rekap BVA CSV',
+    date: '28 Sep 2026',
+    message: 'Pembaruan v1.1.0 menghadirkan modul Backup & Restore Data JSON untuk independensi data 100%, Ekspor Rekapitulasi BVA ke CSV, serta Executive Summary Analytics Board di Dashboard Utama.',
+  },
+]
 
 export default function InboxPage() {
   const router = useRouter()
-  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([])
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>(releaseAnnouncements)
   const [loading, setLoading] = useState(true)
 
-  async function fetchBroadcasts() {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      router.push('/login')
-      return
-    }
-
-    setUserEmail(session.user.email || null)
-
-    // Ambil data pengumuman broadcast dari Supabase
-    const { data, error } = await supabase
-      .from('broadcasts')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (!error) {
-      setBroadcasts(data || [])
-    }
-    setLoading(false)
-  }
-
   useEffect(() => {
-    fetchBroadcasts()
+    let active = true
+
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('broadcasts')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (!active) return
+
+      if (!error) {
+        const existingAnnouncements = (data || []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          message: item.message,
+          type: item.type,
+          date: new Date(item.created_at).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          }),
+        }))
+        const v100Announcements = existingAnnouncements.filter(
+          (item) => item.id === 'announcement-v100' || item.title.includes('v1.0.0')
+        )
+        const otherAnnouncements = existingAnnouncements.filter(
+          (item) => item.id !== 'announcement-v100' && !item.title.includes('v1.0.0')
+        )
+        setBroadcasts([...releaseAnnouncements, ...otherAnnouncements, ...v100Announcements])
+      }
+
+      setLoading(false)
+    })
+
+    return () => {
+      active = false
+    }
   }, [router])
 
   return (
@@ -87,9 +123,7 @@ export default function InboxPage() {
                     </span>
                     <h2 className="text-base font-bold text-white">{item.title}</h2>
                   </div>
-                  <span className="text-xs text-slate-500 font-mono">
-                    {new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
+                  <span className="text-xs text-slate-500 font-mono">{item.date}</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/50 p-4 rounded-xl border border-slate-800/50">
                   {item.message}

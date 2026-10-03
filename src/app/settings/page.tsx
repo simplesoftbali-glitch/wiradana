@@ -16,18 +16,18 @@ interface BackupData {
   profiles: BackupRow[]
 }
 
-const v120RoadmapItems = [
+const v130RoadmapItems = [
   {
-    title: 'Multi-Satuan RAB & Kategori Custom',
-    description: 'Dukungan berbagai satuan pada item RAB dan pengelompokan kategori yang dapat disesuaikan.',
+    title: 'Multi-Currency & Kurs Otomatis',
+    description: 'Dukungan transaksi dalam mata uang asing (USD, EUR, SGD) dengan pencatatan konversi kurs otomatis.',
   },
   {
-    title: 'Audit Trail Pengeluaran BVA',
-    description: 'Riwayat perubahan transaksi pengeluaran untuk membantu penelusuran aktivitas dan audit.',
+    title: 'Pengingat Email & WhatsApp Alert',
+    description: 'Notifikasi otomatis saat pengeluaran BVA mendekati atau melebihi batas anggaran yang ditentukan.',
   },
   {
-    title: 'Template Layout Invoice Tambahan',
-    description: 'Pilihan tata letak invoice tambahan untuk menyesuaikan kebutuhan dokumen proyek.',
+    title: 'Kustomisasi Lampiran & Nota Invoice',
+    description: 'Pengaturan tata letak lampiran bukti kuitansi belanja secara otomatis pada dokumen invoice A4.',
   },
 ] as const
 
@@ -244,15 +244,15 @@ export default function BackupSettingsPage() {
         </div>
       )}
 
-      <section aria-labelledby="v120-roadmap-title" className="rounded-lg border border-[#714B67]/20 bg-[#714B67]/5 p-6">
+      <section aria-labelledby="v130-roadmap-title" className="rounded-lg border border-[#714B67]/20 bg-[#714B67]/5 p-6">
         <div className="mb-4">
-          <h2 id="v120-roadmap-title" className="text-base font-semibold text-slate-900">Rencana Jalan WiraDana v1.2.0</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">Daftar fitur yang disiapkan untuk rilis berikutnya.</p>
+          <h2 id="v130-roadmap-title" className="text-base font-semibold text-slate-900">Rencana Jalan WiraDana v1.3.0</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">Daftar fitur mendatang yang disiapkan untuk rilis versi berikutnya.</p>
         </div>
         <ul className="grid gap-3 md:grid-cols-3">
-          {v120RoadmapItems.map((item) => (
+          {v130RoadmapItems.map((item) => (
             <li key={item.title} className="rounded-lg border border-slate-200 bg-white p-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#714B67]">Direncanakan</span>
+              <span className="inline-flex rounded-full border border-[#714B67]/20 bg-[#714B67]/5 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#714B67]">DIRENCANAKAN</span>
               <h3 className="mt-2 text-sm font-semibold text-slate-900">{item.title}</h3>
               <p className="mt-1 text-xs leading-5 text-slate-500">{item.description}</p>
             </li>
