@@ -259,12 +259,12 @@ export default function LandingOrDashboard() {
 
         <section id="solusi" className="mx-auto max-w-6xl px-6 pb-20 pt-20 md:pb-28 md:pt-28">
           <div className="max-w-4xl">
-            <p className="mb-5 text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Enterprise Light Mode untuk proyek yang lebih terkendali</p>
+            <p className="mb-5 text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Rilis Resmi WiraDana v1.2.0 · Enterprise Light Mode</p>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-6xl">
-              Aplikasi Kontrol Keuangan Proyek & Pemantauan RAB Berbasis Desktop-First
+              RAB Multi-Satuan, Audit Trail, dan Pilihan Template Invoice A4
             </h1>
             <p className="mt-6 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
-              Kelola Rencana Anggaran Biaya (RAB), pantau pengeluaran aktual (BVA) secara real-time, buat Invoice profesional A4, dan cadangkan data Anda secara independen. 100% Gratis untuk Komunitas.
+              Kelola proyek dengan kategori dan satuan yang fleksibel, deteksi mismatch transaksi BVA, telusuri histori aktivitas, lalu cetak invoice dalam layout Modern, Minimalist, atau Formal Classic. Backup data tetap dalam kendali Anda.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#714B67] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#714B67]/20 transition hover:bg-[#5a3b52]">
@@ -292,9 +292,28 @@ export default function LandingOrDashboard() {
         <section id="fitur" className="border-y border-slate-200 bg-white">
           <div className="mx-auto max-w-6xl px-6 py-20">
             <div className="max-w-2xl">
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Fitur inti</p>
-              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">Semua yang dibutuhkan untuk mengelola proyek dengan percaya diri.</h2>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#714B67]">Sorotan Fitur v1.2.0</p>
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">Lebih fleksibel, transparan, dan siap digunakan.</h2>
             </div>
+            <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {[
+                ['📏', 'Multi-Satuan RAB & Kategori Kustom', 'Catat kebutuhan proyek dengan satuan m², m³, ls, oh, dan lainnya. Kelompokkan item menggunakan kategori proyek kustom.'],
+                ['⚠️', 'Deteksi Mismatch Satuan BVA', 'Dapatkan peringatan otomatis saat satuan transaksi aktual berbeda dari satuan acuan RAB.'],
+                ['📜', 'Audit Trail & Activity Log', 'Telusuri histori pencatatan BVA secara aman dan transparan, lalu ekspor log aktivitas ke CSV.'],
+                ['📄', 'Multi-Template Invoice A4', 'Pilih gaya Modern, Minimalist, atau Formal Classic untuk invoice siap cetak dengan QR Code Tanda Tangan Digital.'],
+                ['🛡️', 'Backup & Restore JSON', 'Ekspor dan pulihkan data proyek kapan saja. Salinan data tetap berada dalam kendali Anda.'],
+              ].map(([icon, title, description]) => (
+                <article key={title} className="rounded-xl border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-0.5 hover:border-[#714B67]/40 hover:shadow-lg">
+                  <div aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#714B67]/10 text-2xl">
+                    {icon}
+                  </div>
+                  <h3 className="mt-5 text-base font-bold text-slate-900">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+                </article>
+              ))}
+            </div>
+
+            <h3 className="mt-16 text-lg font-bold text-slate-900">Fitur inti WiraDana</h3>
             <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {[
                 [Calculator, 'Budget vs. Actual (BVA) Tracking', 'Pantau selisih anggaran aktual harian dan dapatkan sistem peringatan dini overbudget.'],
@@ -337,7 +356,7 @@ export default function LandingOrDashboard() {
         <footer className="border-t border-slate-200 bg-white">
           <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>© 2026 WiraDana. Untuk proyek yang lebih tertata.</p>
-            <span className="w-fit rounded-full border border-[#714B67]/20 bg-[#714B67]/5 px-3 py-1 text-xs font-semibold text-[#714B67]">WiraDana v1.1.0</span>
+            <span className="w-fit rounded-full border border-[#714B67]/20 bg-[#714B67]/5 px-3 py-1 text-xs font-semibold text-[#714B67]">WiraDana v1.2.0</span>
             <div className="flex gap-5">
               <Link href="/feedback" className="transition hover:text-[#714B67]">Feedback</Link>
               <Link href="/login" className="transition hover:text-[#714B67]">Masuk</Link>
