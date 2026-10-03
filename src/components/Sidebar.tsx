@@ -228,7 +228,7 @@ export default function Sidebar({ userEmail: initialUserEmail }: SidebarProps) {
           </button>
           <div className="flex items-center justify-between gap-3 md:flex-col md:items-start md:gap-1">
             <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-500">
-              WiraDana v1.1.0
+              WiraDana v1.2.0
             </span>
             <Link
               href="/settings"
